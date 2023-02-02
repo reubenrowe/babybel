@@ -1,42 +1,997 @@
 (* The intrinsically typed second order syntactical framework *)
 
 type _ base = B
-type _ boxed = Bo
-type (_,_) arr = A
+  (* Parameter is agnostic *)
+  (* Parameter is unconstrained *)
+
+and  _ boxed = Bo
+  (* Parameter is agnostic *)
+  (* Parameter is unconstrained *)
+
+and  (_,_) arr = A
+  (* Both parameters are agnostic *)
+  (* Both parameters are unconstrained *)
 
 (* Type level and singleton contexts *)
-type (_, _) cons = Cons
-type nil = Nil
+and  (_,_) cons = Cons [@name "cons_Cons"]
+  (* Both parameters are agnostic *)
+  (* Both parameters are unconstrained *)
+and  nil = Nil
 
-type _ ctx
-  = Empty : nil ctx
-  | Dec : 'a ctx * 't -> (('a, 't) cons) ctx
+and  _ ctx =
+  | Empty : nil ctx
+    [@name "ctx_Empty"]
+  | Dec :    'a ctx 
+          *  ('t [@opaque] (* this _must_ be opaque*))
+          -> (('a, 't) cons) ctx
+  (* Parameter is not relevant *)
+  (* Parameter is constrained *)
+
+[@@deriving 
+  visitors { variety = "iter"; name = "base_iter"; polymorphic = true; nude = true; concrete = true; },
+  visitors { variety = "map"; name = "base_map"; polymorphic = true; nude = true; concrete = true; },
+  visitors { variety = "reduce"; name = "base_reduce"; polymorphic = true; }
+]
+
+(*  iterator visitor method for a (G)ADT constructor of type ('v0, ..., 'v{m}) t
+    
+        C : s_0 * ... * s_n -> (u_0, ..., u_m) t
+    
+    has signature
+
+        method visit_C :
+          'env 'var0 ... 'var{k} .
+            u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n -> unit
+
+    where:
+    
+      - 'var0, ..., 'var{k} correspond to the type variables occurring in the
+        constructor
+
+      - u'_i = ('env -> u_i -> unit) if the i_th parameter of t is relevant,
+        and u'_i = unit otherwise (if it is not relevant)
+
+    iterator visitor method for a type ('v0, ..., 'v{m}) t has signature
+
+        method visit_t :
+          type env v0 ... v{m} .
+            u_0 -> ... -> u_m -> env -> (v0, ..., v{m}) t -> unit
+
+    where:
+    
+      - u_i = (env -> v{i} -> unit) if the i_th parameter of t is relevant,
+        and u_i = unit otherwise (if it is not relevant)
+*)
+
+class ['self] base_iter = object (self : 'self)
+  method visit_B : 'env 'var0 . unit  -> 'env -> unit =
+    fun _visit_arg0 env -> ()
+  method visit_base : type env v0 . unit -> env -> v0 base -> unit =
+    fun _visit_arg0 env _visitors_this ->
+      match _visitors_this with
+      | B -> self#visit_B _visit_arg0 env
+  method visit_Bo : 'env 'var0 . unit -> 'env -> unit =
+    fun _visit_arg0 env -> ()
+  method visit_boxed : type env v0 . unit -> env -> v0 boxed -> unit =
+    fun _visit_arg0 env _visitors_this ->
+      match _visitors_this with
+      | Bo -> self#visit_Bo _visit_arg0 env
+  method visit_A : 'env 'var0 'var1 . unit -> unit -> 'env -> unit =
+    fun _visit_arg0 _visit_arg1 env -> ()
+  method visit_arr :
+      type env v0 v1 . unit -> unit -> env -> (v0, v1) arr -> unit =
+    fun _visit_arg0 _visit_arg1 env _visitors_this ->
+      match _visitors_this with
+      | A -> self#visit_A _visit_arg0 _visit_arg1 env
+  method visit_cons_Cons : 'env 'var0 'var1 . unit -> unit -> 'env -> unit =
+    fun _visit_arg0 _visit_arg1 env -> ()
+  method visit_cons :
+      type env v0 v1 . unit -> unit -> env -> (v0, v1) cons -> unit =
+    fun _visit_arg0 _visit_arg1 env _visitors_this ->
+      match _visitors_this with
+      | Cons -> self#visit_cons_Cons _visit_arg0 _visit_arg1 env
+  method visit_Nil : 'env . 'env -> unit =
+    fun env -> ()
+  method visit_nil : type env . env -> nil -> unit =
+    fun env _visitors_this ->
+      match _visitors_this with
+      | Nil -> self#visit_Nil env
+  method visit_ctx_Empty : 'env . unit -> 'env -> unit =
+    fun _visit_arg0 env -> ()
+  method visit_Dec : 'env 'v0 'v1 . unit -> 'env -> 'v0 ctx -> 'v1 -> unit =
+    fun _visit_arg0 env _visitors_c0 _visitors_c1 ->
+      let _visitors_r0 = 
+        let _visit_arg0 = () in
+        self#visit_ctx _visit_arg0 env _visitors_c0 in
+      let _visitors_r1 =
+        (* This is the auto-generated code for opaque arguments *)
+        (fun _visitors_this -> ()) _visitors_c1 in
+      ()
+  method visit_ctx :
+      type env v0 . unit -> env -> v0 ctx -> unit =
+    fun _visit_arg0 env _visitors_this ->
+      match _visitors_this with
+      | Empty ->
+        self#visit_ctx_Empty _visit_arg0 env
+      | Dec (_visitors_c0, _visitors_c1) ->
+        self#visit_Dec _visit_arg0 env _visitors_c0 _visitors_c1
+end
+
+(*  map visitor method for a (G)ADT constructor of type ('v0, ..., 'v{m}) t
+    
+        C : s_0 * ... * s_n -> (u_0, ..., u_m) t
+    
+    has signature
+
+        method visit_C :
+          'env 'var0_in ... 'var{k}_in 'var0_out ... 'var{k}_out .
+            u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n 
+              -> (r_0, ..., r_m) t
+
+    where:
+    
+      - 'var0_in, ..., 'var{k}_in correspond to the type variables occurring in
+        the constructor
+
+      - 'var0_out, ..., 'var{k}_out are fresh variables in one-one
+        correspondence with 'var0_in, ..., 'var{k}_in
+
+      - u'_i = ('env -> u_i -> \theta(u_i)) if the i_th parameter of t is
+          relevant and unconstrained
+            (in which case u_i \in { 'var0_in, ..., 'var{k}_in })
+          where \theta is the substitution ['var{i}_out / 'var{i}_in] over all i,
+        u'_i = ('env -> u_i -> u_i) if the i_th parameter of t is relevant but constrained,
+        and u'_i = unit otherwise
+          (if the i_th parameter it is not relevant)
+
+      - r_i = \theta(u_i) if the i_th parameter of t is unconstrained
+          (where \theta is the substitution as defined previously),
+        and r_i = u_i otherwise (if the i_th parameter is not relevant or else constrained)
+          
+
+    iterator visitor method for a type ('v0, ..., 'v{m}) t has signature
+
+        method visit_t :
+          type env v0_in ... v{m}_in v0_out ... v{m}_out .
+            u_0 -> ... -> u_m -> env -> 
+              (v0_in, ..., v{m}_in) t -> (r_0, ..., r_m) t
+
+    where:
+    
+      - u_i = (env -> v{i}_in -> v{i}_out) if the i_th parameter of t is
+          relevant and unconstrained,
+        u_i = (env -> v{i}_in -> v{i}_in) if the i_th parameter of t is relevant
+          but constrained,
+        and u_i = unit otherwise
+          (if the i_th parameter is not relevant)
+
+      - r_i = v{i}_out if the i_th parameter of t is unconstrained,
+        and r_i = v{i}_in otherwise (if the i_th parameter is constrained)
+*)
+
+class ['self] base_map = object (self : 'self)
+  method visit_B :
+      'env 'var0_in 'var0_out . unit -> 'env -> 'var0_out base =
+    fun _visit_arg0 env -> B
+  method visit_base :
+    type env v0_in v0_out . unit -> env -> v0_in base -> v0_out base =
+      fun _visit_arg0 env _visitors_this ->
+        match _visitors_this with
+        | B -> self#visit_B _visit_arg0 env
+  method visit_Bo :
+      'env 'var0_in 'var0_out .
+        unit -> 'env -> 'var0_out boxed =
+    fun _visit_arg0 env -> Bo
+  method visit_boxed :
+      type env v0_in v0_out .
+        unit -> env -> v0_in boxed -> v0_out boxed =
+    fun _visit_arg0 env _visitors_this ->
+      match _visitors_this with
+        | Bo -> self#visit_Bo _visit_arg0 env
+  method visit_A :
+      'env 'var0_in 'var1_in 'var0_out 'var1_out .
+        unit -> unit -> 'env -> ('var0_out, 'var1_out) arr =
+    fun _visit_arg0 _visit_arg1 env -> A
+  method visit_arr :
+      type env v0_in v1_in v0_out v1_out .
+        unit -> unit -> env -> (v0_in, v1_in) arr -> (v0_out, v1_out) arr =
+    fun _visit_arg0 _visit_arg1 env _visitors_this ->
+      match _visitors_this with
+      | A -> self#visit_A _visit_arg0 _visit_arg1 env
+  method visit_cons_Cons :
+      'env 'var0_in 'var1_in 'var0_out 'var1_out .
+        unit -> unit ->  'env -> ('var0_out, 'var1_out) cons =
+    fun _visit_arg0 _visit_arg1 env -> Cons
+  method visit_cons :
+      type env v0_in v1_in v0_out v1_out .
+        unit -> unit -> env -> (v0_in, v1_in) cons -> (v0_out, v1_out) cons =
+    fun _visit_arg0 _visit_arg1 env _visitors_this ->
+      match _visitors_this with
+      | Cons -> self#visit_cons_Cons _visit_arg0 _visit_arg1 env
+  method visit_Nil : 'env . 'env -> nil =
+    fun env -> Nil
+  method visit_nil : 'env . 'env -> nil -> nil =
+    fun env _visitors_this ->
+      match _visitors_this with
+      | Nil -> self#visit_Nil env
+  method visit_ctx_Empty : 'env . unit -> 'env -> nil ctx =
+    fun _visit_arg0 env -> Empty
+  method visit_Dec : 
+      'env 'var0_in 'var1_in 'var0_out 'var1_out .
+        unit -> 'env -> 'var0_in ctx -> 'var1_in ->
+          (('var0_in, 'var1_in) cons) ctx =
+    fun _visit_arg0 env _visitors_c0 _visitors_c1 ->
+      let _visitors_r0 =
+        let _visit_arg0 = () in
+        self#visit_ctx _visit_arg0 env _visitors_c0 in
+      let _visitors_r1 =
+        (* This is the auto-generated code for opaque arguments *)
+        (fun _visitors_this -> _visitors_this) _visitors_c1 in
+      Dec (_visitors_r0, _visitors_r1)
+  method visit_ctx :
+      type env v0_in v0_out . unit -> env -> v0_in ctx -> v0_in ctx =
+    fun _visit_arg0 env _visitors_this ->
+      match _visitors_this with
+      | Empty ->
+        self#visit_ctx_Empty _visit_arg0 env
+      | Dec (_visitors_c0, _visitors_c1) ->
+        self#visit_Dec _visit_arg0 env _visitors_c0 _visitors_c1
+end
+
+(*  reduce visitor method for a (G)ADT constructor of type ('v0, ..., 'v{m}) t
+    
+        C : s_0 * ... * s_n -> (u_0, ..., u_m) t
+    
+    has signature
+
+        method visit_C :
+          'env 'var0 ... 'var{k} .
+            u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n -> 'res
+
+    where:
+    
+      - 'var0, ..., 'var{k} correspond to the type variables occurring in the
+        constructor
+
+      - u'_i = ('env -> u_i -> 'res) if the i_th parameter of t is relevant,
+        and u'_i = unit otherwise (if it is not relevant)
+      
+      - 'res is the type variable used in the virtual zero and plus methods
+        that denotes the type of the result of the reduction
+
+    iterator visitor method for a type ('v0, ..., 'v{m}) t has signature
+
+        method visit_t :
+          type env v0 ... v{m} .
+            u_0 -> ... -> u_m -> env -> (v0, ..., v{m}) t -> 'res
+
+    where:
+    
+      - u_i = (env -> v{i} -> 'res) if the i_th parameter of t is relevant,
+        and u_i = unit otherwise (if it is not relevant)
+
+      - 'res is the type variable used in the virtual zero and plus methods
+        that denotes the type of the result of the reduction
+
+*)
+
+class virtual ['self] base_reduce = object (self : 'self)
+  method virtual zero : 'res
+  method virtual plus : 'res -> 'res -> 'res
+  method visit_B : 'env 'var0 . unit -> 'env -> 'res =
+    fun _visit_arg0 env -> self#zero
+  method visit_base :
+    type env v0 . unit -> env -> v0 base -> 'res =
+      fun _visit_arg0 env _visitors_this ->
+        match _visitors_this with
+        | B -> self#visit_B _visit_arg0 env
+  method visit_Bo : 'env 'var0 . unit -> 'env -> 'res =
+    fun _visit_arg0 env -> self#zero
+  method visit_boxed :
+    type env v0 . unit -> env -> v0 boxed -> 'res =
+      fun _visit_arg0 env _visitors_this ->
+        match _visitors_this with
+        | Bo -> self#visit_Bo _visit_arg0 env
+  method visit_A :
+      'env 'var0 'var1 . unit -> unit -> 'env -> 'res =
+    fun _visit_arg0 _visit_arg1 env -> self#zero
+  method visit_arr :
+      type env v0 v1 . unit -> unit -> env -> (v0, v1) arr -> 'res =
+    fun _visit_arg0 _visit_arg1 env _visitors_this ->
+      match _visitors_this with
+      | A -> self#visit_A _visit_arg0 _visit_arg1 env
+  method visit_cons_Cons : 'env 'var0 'var1 . unit -> unit -> 'env -> 'res =
+    fun _visit_arg0 _visit_arg1 env -> self#zero
+  method visit_cons :
+      type env v0 v1 . unit -> unit -> env -> (v0, v1) cons -> 'res =
+    fun _visit_arg0 _visit_arg1 env _visitors_this ->
+      match _visitors_this with
+      | Cons -> self#visit_cons_Cons _visit_arg0 _visit_arg1 env
+  method visit_Nil : 'env . 'env -> 'res =
+    fun env -> self#zero
+  method visit_nil : type env . env -> nil -> 'res =
+    fun env _visitors_this ->
+      match _visitors_this with
+      | Nil -> self#visit_Nil env
+  method visit_ctx_Empty : 'env 'var0 . unit -> 'env -> 'res =
+    fun _visit_arg0 env -> self#zero
+  method visit_Dec : 
+      'env 'var0 'var1 . unit -> 'env -> 'var0 ctx -> 'var1 -> 'res =
+    fun _visit_arg0 env _visitors_c0 _visitors_c1 ->
+      let _visitors_r0 =
+        let _visit_arg0 = () in
+        self#visit_ctx _visit_arg0 env _visitors_c0 in
+      let _visitors_r1 =
+        (* This is the auto-generated code for opaque arguments *)
+        (fun _visitors_this -> self#zero) _visitors_c1 in
+      self#plus _visitors_r0 _visitors_r1
+  method visit_ctx :
+      type env v0 . unit -> env -> v0 ctx -> 's =
+    fun _visit_arg0 env _visitors_this ->
+      match _visitors_this with
+      | Empty ->
+        self#visit_ctx_Empty _visit_arg0 env
+      | Dec (_visitors_c0, _visitors_c1) ->
+        self#visit_Dec _visit_arg0 env _visitors_c0 _visitors_c1
+end
 
 (* The module for the syntactic framework *)
 
-module SyntacticFramework (S : sig type _ constructor  val to_string : 'a constructor -> string end) = struct
+module SyntacticFramework
+  (X : sig 
+         type _ constructor
+         val to_string : 'a constructor -> string
+       end) =
+struct
+    (* Types *)
 
     (* Terms *)
     type (_,_) var =
+      (* Both parameters must be not relevant *)
+      (* Both parameters are constrained *)
       | Top : (('g , 'a base) cons, 'a base) var
       | Pop : ('g, 'a base) var -> (('g, 'b base) cons, 'a base) var
+    and  (_,_,_) sp =
+      (* All parameters must not be relevant *)
+      (* All parameters are constrained *)
+      | Empty : ('g, 't, 't) sp
+        [@name "sp_Empty"]
+        (* Rename visitor methods for the constructor so they don't clash with
+           those from the ctx type *)
+      | Cons : ('g, 't1) tm * ('g, 't2, 't3) sp -> ('g, ('t1, 't2) arr, 't3) sp
+        [@name "sp_Cons"]
+    and  (_,_) tm =
+      (* Both parameters must be not relevant *)
+      (* Both parameters are constrained *)
+      | Lam : (('g, 'a base) cons, 't) tm -> ('g, ('a base, 't) arr) tm
+      | Box :  (nil, 't) tm -> ('g, 't boxed) tm
+      | Var : ('g, 'a base) var -> ('g, 'a base) tm
+      | C : 't X.constructor * ('g, 't, 'a base) sp -> ('g, 'a base) tm
+        (* Only occurrences of an existential type, 't *)
+    (* Shifts of indices *)
+    and  (_,_) shift =
+      (* Both parameters must be not relevant *)
+      (* Both parameters are constrained *)
+      (*   It might seem that the first parameter is unconstrained, but the
+           fact that the first parameter must match the second in the type of
+           the Id constructor is also a constraint *)
+      | Id : ('g, 'g) shift
+      | Suc : ('g, 'd) shift  -> ('g, ('d , 'a base) cons) shift
+    (* Renamings *)
+    and  (_,_) ren =
+      (* First parameter must be not relevant *)
+      (* Second parameter is agnostic *)
+      (* Both parameters are constrained *)
+      | ShiftR : ('g, 'd) shift-> ('g, 'd) ren
+      | DotR : ('g, 'd) ren * ('d, 'a base) var -> (('g, 'a base) cons, 'd) ren
+    (* Substitutions *)
+    and  (_,_) sub =
+      (* First parameter must be not relevant *)
+      (* Second parameter is agnostic *)
+      (* Both parameters are constrained *)
+      | Shift : ('g, 'd) shift-> ('g, 'd) sub
+      | Dot : ('g, 'd) sub * ('d, 't) tm -> (('g, 't) cons, 'd) sub
+    (* [@@deriving 
+      visitors { variety = "iter"; polymorphic = true; nude = "true"; concrete = true; ancestors = [ "base_iter" ]; virtual = [ "constructor" ]; },
+      visitors { variety = "map"; polymorphic = true; nude = "true"; concrete = true; ancestors = [ "base_map" ]; virtual = [ "constructor" ]; },
+      visitors { variety = "reduce"; polymorphic = true; ancestors = [ "base_reduce" ]; virtual = [ "constructor" ]; }
+    ] *)
 
-     and (_,_,_) sp
-       = Empty : ('g, 't, 't) sp
-       | Cons : ('g, 't1) tm * ('g, 't2, 't3) sp -> ('g, ('t1, 't2) arr, 't3) sp
+    (* Visitor classes *)
 
-     and (_,_) tm
-       = Lam : (('g, 'a base) cons, 't) tm -> ('g, ('a base, 't) arr) tm
-       | Box :  (nil, 't) tm -> ('g, 't boxed) tm
-       | Var : ('g, 'a base) var -> ('g, 'a base) tm
-       | C : 't S.constructor * ('g, 't, 'a base) sp -> ('g, 'a base) tm
+    (* The visitor methods for the above types don't actually need to call the
+       visitor methods for the basic types at the top, since they are never
+       referred to in the arguments of the constructors. They are only used as
+       arguments for the parameters of the return types.
+      
+       Nevertheless, these visitors will extend the previous ones, so that all
+       the visitor methods can be composed together in one class.
+    *)
 
+    class virtual ['self] iter = object (self : 'self)
+      inherit [_] base_iter
+      method virtual visit_constructor :
+       'env 'v0 . unit -> 'env -> 'v0 X.constructor -> unit
+      method visit_Top : 'env 'var0 'var1 . unit -> unit -> 'env -> unit =
+        fun _visit_arg0 _visit_arg1 env -> ()
+      method visit_Pop :
+          'env 'var0 'var1 'var2 . unit -> unit -> 'env ->
+            ('var0, 'var1 base) var -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
+          ()
+      method visit_var :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) var -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Top ->
+            self#visit_Top _visit_arg0 _visit_arg1 env
+          | Pop v ->
+            self#visit_Pop _visit_arg0 _visit_arg1 env v
+      method visit_sp_Empty : 
+          'env 'var0 'var1 . unit -> unit -> unit -> 'env -> unit =
+        fun _visit_arg0 _visit_arg1 _visit_arg2 env -> ()
+      method visit_sp_Cons :
+          'env 'var0 'var1 'var2 'var3 .
+            unit-> unit -> unit -> 'env -> ('var0, 'var1) tm ->
+              ('var0, 'var2, 'var3) sp -> unit =
+        fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c0 _visitors_c1 ->
+          let () =
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
+          let () =
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            let _visit_arg2 = () in
+            self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
+          ()
+      method visit_sp :
+          type env v0 v1 v2 .
+            unit -> unit -> unit -> env -> (v0, v1, v2) sp -> unit =
+        fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_this ->
+          match _visitors_this with
+          | Empty ->
+            self#visit_sp_Empty _visit_arg0 _visit_arg1 _visit_arg2 env
+          | Cons (_visitors_c0, _visitors_c1) ->
+            self#visit_sp_Cons _visit_arg0 _visit_arg1 _visit_arg2 env
+              _visitors_c0 _visitors_c1
+      method visit_Lam :
+          'env 'var0 'var1 'var2 .
+            unit -> unit -> 'env -> (('var0, 'var1 base) cons, 'var2) tm ->
+              unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
+          ()
+      method visit_Box :
+          'env 'var0 'var1 .
+            unit -> unit -> 'env -> (nil, 'var0) tm -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
+          ()
+      method visit_Var :
+          'env 'var0 'var1 .
+            unit -> unit -> 'env -> ('var0, 'var1 base) var -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
+          ()
+      method visit_C :
+          'env 'var0 'var1 'var2 .
+            unit -> unit -> 'env -> 'var0 X.constructor ->
+              ('var1, 'var0, 'var2 base) sp -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
+          let () = 
+            let _visit_arg0 = () in
+            self#visit_constructor _visit_arg0 env _visitors_c0 in
+          let () =
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            let _visit_arg2 = () in
+            self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
+          ()
+      method visit_tm :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) tm -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Lam _visitors_c0 ->
+            self#visit_Lam _visit_arg0 _visit_arg1 env _visitors_c0
+          | Box _visitors_c0 ->
+            self#visit_Box _visit_arg0 _visit_arg1 env _visitors_c0
+          | Var _visitors_c0 ->
+            self#visit_Var _visit_arg0 _visit_arg1 env _visitors_c0
+          | C (_visitors_c0, _visitors_c1) ->
+            self#visit_C _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
+      method visit_Id : 'env 'var0 . unit -> unit -> 'env -> unit =
+        fun _visit_arg0 _visit_arg1 env -> ()
+      method visit_Suc :
+          'env 'var0 'var1 'var2 . unit -> unit -> 'env ->
+            ('var0, 'var1) shift -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
+          ()
+      method visit_shift :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) shift -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Id ->
+            self#visit_Id _visit_arg0 _visit_arg1 env
+          | Suc _visitors_c0 ->
+            self#visit_Suc _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_ShiftR :
+          'env 'var0 'var1 .
+            unit -> unit -> 'env -> ('var0, 'var1) shift -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
+          ()
+      method visit_DotR :
+          'env 'var0 'var1 'var2 .
+            unit -> unit -> 'env -> ('var0, 'var1) ren -> ('var1, 'var2) var ->
+              unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_ren _visit_arg0 _visit_arg1 env _visitors_c0 in
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_var _visit_arg0 _visit_arg1 env _visitors_c1 in
+          ()
+      method visit_ren :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) ren -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | ShiftR _visitors_c0 ->
+            self#visit_ShiftR _visit_arg0 _visit_arg1 env _visitors_c0
+          | DotR (_visitors_c0, _visitors_c1) ->
+            self#visit_DotR _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
+      method visit_Shift :
+          'env 'var0 'var1 .
+            unit -> unit -> 'env -> ('var0, 'var1) shift -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
+          ()
+      method visit_Dot :
+          'env 'var0 'var1 'var2 .
+            unit -> unit -> 'env -> ('var0, 'var1) sub -> ('var1, 'var2) tm ->
+              unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_sub _visit_arg0 _visit_arg1 env _visitors_c0 in
+          let () = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c1 in
+          ()
+      method visit_sub :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) sub -> unit =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Shift _visitors_c0 ->
+            self#visit_Shift _visit_arg0 _visit_arg1 env _visitors_c0
+          | Dot (_visitors_c0, _visitors_c1) ->
+            self#visit_Dot _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
+    end
+
+    class virtual ['self] map = object (self : 'self)
+      inherit [_] base_map
+      method virtual visit_constructor :
+        'env 'v0_in 'v0_out .
+          unit -> 'env -> 'v0_in X.constructor -> 'v0_in X.constructor
+      method visit_Top :
+          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+            unit -> unit -> 'env ->
+              (('var0_in , 'var1_in base) cons, 'var1_in base) var =
+        fun _visit_arg0 _visit_arg1 env -> Top
+      method visit_Pop :
+          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out . 
+            unit -> unit -> 'env ->
+              ('var0_in, 'var1_in base) var ->
+                (('var0_in, 'var2_in base) cons, 'var1_in base) var =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
+          Pop _visitors_r0
+      method visit_var :
+          type env v0_in v1_in v0_out v1_out .
+            unit -> unit -> env -> (v0_in, v1_in) var -> (v0_in, v1_in) var =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Top ->
+            self#visit_Top _visit_arg0 _visit_arg1 env
+          | Pop v ->
+            self#visit_Pop _visit_arg0 _visit_arg1 env v
+      method visit_sp_Empty : 
+          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+            unit -> unit -> unit -> 'env -> ('var0_in, 'var1_in, 'var1_in) sp =
+        fun _visit_arg0 _visit_arg1 _visit_arg2 env -> Empty
+      method visit_sp_Cons :
+          'env 'var0_in  'var1_in  'var2_in  'var3_in
+               'var0_out 'var1_out 'var2_out 'var3_out .
+            unit-> unit -> unit -> 'env ->
+              ('var0_in, 'var1_in) tm -> ('var0_in, 'var2_in, 'var3_in) sp ->
+                ('var0_in, ('var1_in, 'var2_in) arr, 'var3_in) sp =
+        fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c0 _visitors_c1 ->
+          let _visitors_r0 =
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
+          let _visitors_r1 =
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            let _visit_arg2 = () in
+            self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
+          Cons (_visitors_r0, _visitors_r1)
+      method visit_sp :
+          type env v0_in v1_in v2_in v0_out v1_out v2_out .
+            unit -> unit -> unit -> env -> 
+              (v0_in, v1_in, v2_in) sp -> (v0_in, v1_in, v2_in) sp =
+        fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_this ->
+          match _visitors_this with
+          | Empty ->
+            self#visit_sp_Empty _visit_arg0 _visit_arg1 _visit_arg2 env
+          | Cons (_visitors_c0, _visitors_c1) ->
+            self#visit_sp_Cons _visit_arg0 _visit_arg1 _visit_arg2 env
+              _visitors_c0 _visitors_c1
+      method visit_Lam :
+          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+            unit -> unit -> 'env ->
+              (('var0_in, 'var1_in base) cons, 'var2_in) tm ->
+                ('var0_in, ('var1_in base, 'var2_in) arr) tm =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
+          Lam _visitors_r0
+      method visit_Box :
+          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+            unit -> unit -> 'env -> (nil, 'var0_in) tm ->
+              ('var1_in, 'var0_in boxed) tm =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
+          Box _visitors_r0
+      method visit_Var :
+          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+            unit -> unit -> 'env -> ('var0_in, 'var1_in base) var ->
+              ('var0_in, 'var1_in base) tm =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
+          Var _visitors_r0
+      method visit_C :
+          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+            unit -> unit -> 'env -> 
+              'var0_in X.constructor -> 
+                ('var1_in, 'var0_in, 'var2_in base) sp ->
+                  ('var1_in, 'var2_in base) tm =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            self#visit_constructor _visit_arg0 env _visitors_c0 in
+          let _visitors_r1 =
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            let _visit_arg2 = () in
+            self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
+          C (_visitors_r0, _visitors_r1)
+      method visit_tm :
+          type env v0_in v1_in v0_out v1_out .
+            unit -> unit -> env -> (v0_in, v1_in) tm -> (v0_in, v1_in) tm =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Lam _visitors_c0 ->
+            self#visit_Lam _visit_arg0 _visit_arg1 env _visitors_c0
+          | Box _visitors_c0 ->
+            self#visit_Box _visit_arg0 _visit_arg1 env _visitors_c0
+          | Var _visitors_c0 ->
+            self#visit_Var _visit_arg0 _visit_arg1 env _visitors_c0
+          | C (_visitors_c0, _visitors_c1) ->
+            self#visit_C _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
+      method visit_Id :
+          'env 'var0_in 'var0_out . unit -> unit -> 'env ->
+            ('var0_in, 'var0_in) shift =
+        fun _visit_arg0 _visit_arg1 env -> Id
+      method visit_Suc :
+          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+            unit -> unit -> 'env -> ('var0_in, 'var1_in) shift ->
+              ('var0_in, ('var1_in , 'var2_in base) cons) shift =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
+          Suc _visitors_r0
+      method visit_shift :
+          type env v0_in v1_in v0_out v1_out .
+            unit -> unit -> env -> (v0_in, v1_in) shift ->
+              (v0_in, v1_in) shift =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Id ->
+            self#visit_Id _visit_arg0 _visit_arg1 env
+          | Suc _visitors_c0 ->
+            self#visit_Suc _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_ShiftR :
+          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+            unit -> unit -> 'env -> ('var0_in, 'var1_in) shift ->
+              ('var0_in, 'var1_in) ren =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
+          ShiftR _visitors_r0
+      method visit_DotR :
+          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+            unit -> unit -> 'env -> ('var0_in, 'var1_in) ren ->
+              ('var1_in, 'var2_in base) var ->
+                (('var0_in, 'var2_in base) cons, 'var1_in) ren =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_ren _visit_arg0 _visit_arg1 env _visitors_c0 in
+          let _visitors_r1 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_var _visit_arg0 _visit_arg1 env _visitors_c1 in
+          DotR (_visitors_r0, _visitors_r1)
+      method visit_ren :
+          type env v0_in v1_in v0_out v1_out .
+            unit -> unit -> env -> (v0_in, v1_in) ren -> (v0_in, v1_in) ren =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | ShiftR _visitors_c0 ->
+            self#visit_ShiftR _visit_arg0 _visit_arg1 env _visitors_c0
+          | DotR (_visitors_c0, _visitors_c1) ->
+            self#visit_DotR _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
+      method visit_Shift :
+          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+            unit -> unit -> 'env -> ('var0_in, 'var1_in) shift ->
+              ('var0_in, 'var1_in) sub =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
+          Shift _visitors_r0
+      method visit_Dot :
+          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+            unit -> unit -> 'env ->
+              ('var0_in, 'var1_in) sub -> ('var1_in, 'var2_in) tm ->
+                (('var0_in, 'var2_in) cons, 'var1_in) sub =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_sub _visit_arg0 _visit_arg1 env _visitors_c0 in
+          let _visitors_r1 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c1 in
+          Dot (_visitors_r0, _visitors_r1)
+      method visit_sub :
+          type env v0_in v1_in v0_out v1_out .
+            unit -> unit -> env -> (v0_in, v1_in) sub -> (v0_in, v1_in) sub =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Shift _visitors_c0 ->
+            self#visit_Shift _visit_arg0 _visit_arg1 env _visitors_c0
+          | Dot (_visitors_c0, _visitors_c1) ->
+            self#visit_Dot _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
+    end
+
+    class virtual ['self] reduce = object (self : 'self)
+      inherit [_] base_reduce
+      method virtual visit_constructor :
+       'env 'v0 . unit -> 'env -> 'v0 X.constructor -> 'res
+      method visit_Top : 'env 'var0 'var1 . unit -> unit -> 'env -> 'res =
+        fun _visit_arg0 _visit_arg1 env ->
+          self#zero
+      method visit_Pop :
+          'env 'var0 'var1 'var2 . unit -> unit -> 'env ->
+            ('var0, 'var1 base) var -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visit_arg0 = () in
+          let _visit_arg1 = () in
+          self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_var :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) var -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Top ->
+            self#visit_Top _visit_arg0 _visit_arg1 env
+          | Pop v ->
+            self#visit_Pop _visit_arg0 _visit_arg1 env v
+      method visit_sp_Empty : 
+          'env 'var0 'var1 . unit -> unit -> unit -> 'env -> 'res =
+        fun _visit_arg0 _visit_arg1 _visit_arg2 env ->
+          self#zero
+      method visit_sp_Cons :
+          'env 'var0 'var1 'var2 'var3 .
+            unit-> unit -> unit -> 'env -> ('var0, 'var1) tm ->
+              ('var0, 'var2, 'var3) sp -> 'res =
+        fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c0 _visitors_c1 ->
+          let _visitors_r0 =
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
+          let _visitors_r1 =
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            let _visit_arg2 = () in
+            self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
+          self#plus _visitors_r0 _visitors_r1
+      method visit_sp :
+          type env v0 v1 v2 .
+            unit -> unit -> unit -> env -> (v0, v1, v2) sp -> 'res =
+        fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_this ->
+          match _visitors_this with
+          | Empty ->
+            self#visit_sp_Empty _visit_arg0 _visit_arg1 _visit_arg2 env
+          | Cons (_visitors_c0, _visitors_c1) ->
+            self#visit_sp_Cons _visit_arg0 _visit_arg1 _visit_arg2 env
+              _visitors_c0 _visitors_c1
+      method visit_Lam :
+          'env 'var0 'var1 'var2 .
+            unit -> unit -> 'env ->
+              (('var0, 'var1 base) cons, 'var2) tm -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visit_arg0 = () in
+          let _visit_arg1 = () in
+          self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_Box :
+          'env 'var0 'var1 .
+            unit -> unit -> 'env -> (nil, 'var0) tm -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visit_arg0 = () in
+          let _visit_arg1 = () in
+          self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_Var :
+          'env 'var0 'var1 .
+            unit -> unit -> 'env -> ('var0, 'var1 base) var -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visit_arg0 = () in
+          let _visit_arg1 = () in
+          self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_C :
+          'env 'var0 'var1 'var2 .
+            unit -> unit -> 'env -> 'var0 X.constructor ->
+              ('var1, 'var0, 'var2 base) sp -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            self#visit_constructor _visit_arg0 env _visitors_c0 in
+          let _visitors_r1 =
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            let _visit_arg2 = () in
+            self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
+          self#plus _visitors_r0 _visitors_r1
+      method visit_tm :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) tm -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Lam _visitors_c0 ->
+            self#visit_Lam _visit_arg0 _visit_arg1 env _visitors_c0
+          | Box _visitors_c0 ->
+            self#visit_Box _visit_arg0 _visit_arg1 env _visitors_c0
+          | Var _visitors_c0 ->
+            self#visit_Var _visit_arg0 _visit_arg1 env _visitors_c0
+          | C (_visitors_c0, _visitors_c1) ->
+            self#visit_C _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
+      method visit_Id : 'env 'var0 . unit -> unit -> 'env -> 'res =
+        fun _visit_arg0 _visit_arg1 env ->
+          self#zero
+      method visit_Suc :
+          'env 'var0 'var1 'var2 . unit -> unit -> 'env ->
+            ('var0, 'var1) shift -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visit_arg0 = () in
+          let _visit_arg1 = () in
+          self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_shift :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) shift -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Id ->
+            self#visit_Id _visit_arg0 _visit_arg1 env
+          | Suc _visitors_c0 ->
+            self#visit_Suc _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_ShiftR :
+          'env 'var0 'var1 .
+            unit -> unit -> 'env -> ('var0, 'var1) shift -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visit_arg0 = () in
+          let _visit_arg1 = () in
+          self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_DotR :
+          'env 'var0 'var1 'var2 .
+            unit -> unit -> 'env ->
+              ('var0, 'var1) ren -> ('var1, 'var2) var -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_ren _visit_arg0 _visit_arg1 env _visitors_c0 in
+          let _visitors_r1 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_var _visit_arg0 _visit_arg1 env _visitors_c1 in
+          self#plus _visitors_r0 _visitors_r1
+      method visit_ren :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) ren -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | ShiftR _visitors_c0 ->
+            self#visit_ShiftR _visit_arg0 _visit_arg1 env _visitors_c0
+          | DotR (_visitors_c0, _visitors_c1) ->
+            self#visit_DotR _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
+      method visit_Shift :
+          'env 'var0 'var1 .
+            unit -> unit -> 'env -> ('var0, 'var1) shift -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
+          let _visit_arg0 = () in
+          let _visit_arg1 = () in
+          self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0
+      method visit_Dot :
+          'env 'var0 'var1 'var2 .
+            unit -> unit -> 'env ->
+              ('var0, 'var1) sub -> ('var1, 'var2) tm -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
+          let _visitors_r0 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_sub _visit_arg0 _visit_arg1 env _visitors_c0 in
+          let _visitors_r1 = 
+            let _visit_arg0 = () in
+            let _visit_arg1 = () in
+            self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c1 in
+          self#plus _visitors_r0 _visitors_r1
+      method visit_sub :
+          type env v0 v1 . unit -> unit -> env -> (v0, v1) sub -> 'res =
+        fun _visit_arg0 _visit_arg1 env _visitors_this ->
+          match _visitors_this with
+          | Shift _visitors_c0 ->
+            self#visit_Shift _visit_arg0 _visit_arg1 env _visitors_c0
+          | Dot (_visitors_c0, _visitors_c1) ->
+            self#visit_Dot _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
+    end
+
+    (* Functions *)
 
     (* Shifts of indices *)
-
-    type (_, _) shift
-      = Id : ('g, 'g) shift
-      | Suc : ('g, 'd) shift  -> ('g, ('d , 'a base) cons) shift
 
     let rec shift_var : type g d a. (g, d) shift -> (g, a base) var -> (d, a base) var =
       fun sh v -> match sh with
@@ -49,10 +1004,6 @@ module SyntacticFramework (S : sig type _ constructor  val to_string : 'a constr
 	     | Suc shh -> Suc (compose_shift sh shh)
 
     (* Renamings *)
-
-    type (_, _) ren
-      = ShiftR : ('g, 'd) shift-> ('g, 'd) ren
-      | DotR : ('g, 'd) ren * ('d, 'a base) var -> (('g, 'a base)cons, 'd) ren
 
     let rec lookup_ren : type g d a. ((g, a base) var * (g, d) ren) -> (d, a base) var =
       function
@@ -95,10 +1046,6 @@ module SyntacticFramework (S : sig type _ constructor  val to_string : 'a constr
 
     (* Substitutions *)
 
-    type (_,_) sub
-      = Shift : ('g, 'd) shift-> ('g, 'd) sub
-      | Dot : ('g, 'd) sub * ('d, 't) tm -> (('g, 't)cons, 'd) sub
-
     let rec lookup : type g d a. ((g, a base) var * (g, d) sub) -> (d, a base) tm =
       function
       | Top, Dot (_, n) -> n
@@ -135,7 +1082,7 @@ module SyntacticFramework (S : sig type _ constructor  val to_string : 'a constr
 		 | Lam m -> Format.fprintf f "\\x. %a" pp_tm m
 		 | Box m -> Format.fprintf f "{%a}" pp_tm m
 		 | Var v -> pp_var f v
-		 | C (c, sp) -> Format.fprintf f "%s %a" (S.to_string c) pp_sp sp
+		 | C (c, sp) -> Format.fprintf f "%s %a" (X.to_string c) pp_sp sp
 
    and pp_sp : type g s t . Format.formatter -> (g, s, t) sp -> unit =
       fun f sp -> match sp with
