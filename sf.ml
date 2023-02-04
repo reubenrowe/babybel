@@ -1003,6 +1003,110 @@ struct
 		  | Id -> v
 		  | Suc sh -> Pop (shift_var sh v)
 
+    (* Some alternative recursion schemes for defining the shift_var function *)
+
+    let shift_var (type g) (v : (g, 'a base) var) =
+      let rec shift_var : type d . (g, d) shift -> (d, 'a base) var =
+        function
+        | Id -> v
+        | Suc sh -> Pop (shift_var sh) in
+      shift_var
+
+    let rec shift_var : type g d. (g, d) shift -> (g, 'a base) var -> (d, 'a base) var =
+      function
+      | Id ->
+        (* g = d : need a function (g, 'a basee) var -> (g, 'a base) var *)
+        (fun v -> v)
+      | Suc sh ->
+        (* d = ($0, $1 base) cons *)
+        (* sh of type (g, $0) shift *)
+        (* Need a function (g, 'a base) var -> (($0, $1 base) cons, 'a base) var *)
+        let f = shift_var sh in
+        (* f of type (g, 'a base) var -> ($0, 'base) var *)
+        (fun v -> Pop (f v))
+
+    (* Dependent reducers for the shift type *)
+    module ReduceShift = struct
+      module type S = sig
+        type ('g, 'd) t
+        class virtual ['a] reduce :
+          object ('a)
+            constraint 'a =
+              < reduce_Id : 'g . ('g, 'g) t;
+                reduce_Suc : 'g 'e 'f . ('g, 'e) t -> ('g, ('e, 'f base) cons) t;
+                reduce_shift : 'g 'd . ('g, 'd) shift -> ('g, 'd) t; .. >
+            method reduce_Id : 'g . ('g, 'g) t
+            method reduce_Suc : 'g 'e 'f . ('g, 'e) t -> ('g, ('e, 'f base) cons) t
+            method reduce_shift : 'g 'd . ('g, 'd) shift -> ('g, 'd) t
+          end
+      end
+      module Make 
+          (X : sig type ('g, 'd) t end)
+            : S with type ('g, 'd) t := ('g, 'd) X.t
+       = struct
+        class virtual ['self] reduce = object (self : 'self)
+          method reduce_Id : type g . (g, g) X.t =
+            failwith "Must be overridden"
+          method reduce_Suc : 
+              type g e f . (g, e) X.t -> (g, (e, f base) cons) X.t =
+            failwith "Must be overridden"
+          method reduce_shift : type g d . (g, d) shift -> (g, d) X.t =
+            function
+            | Id ->
+              self#reduce_Id
+            | Suc sh ->
+              let f = self#reduce_shift sh in
+              self#reduce_Suc f
+        end
+      end
+      module type S1 = sig
+        type ('g, 'd, 'v0) t
+        class ['a] reduce :
+          object ('a)
+            constraint 'a =
+              < reduce_Id : 'g 'v0 . ('g, 'g, 'v0) t;
+                reduce_Suc : 'g 'e 'v0 'f . ('g, 'e, 'v0) t -> ('g, ('e, 'f base) cons, 'v0) t;
+                reduce_shift : 'g 'd 'v0 . ('g, 'd) shift -> ('g, 'd, 'v0) t; .. >
+            method reduce_Id : 'g 'v0 . ('g, 'g, 'v0) t
+            method reduce_Suc : 'g 'e 'f 'v0 . ('g, 'e, 'v0) t -> ('g, ('e, 'f base) cons, 'v0) t
+            method reduce_shift : 'g 'd 'v0 . ('g, 'd) shift -> ('g, 'd, 'v0) t
+          end
+      end
+      module Make1 
+          (X : sig type ('g, 'd, 'v0) t end)
+            : S1 with type ('g, 'd, 'v0) t := ('g, 'd, 'v0) X.t
+       = struct
+        class ['self] reduce = object (self : 'self)
+          method reduce_Id : type g v0 . (g, g, v0) X.t =
+            failwith "Must be overridden"
+          method reduce_Suc : 
+              type g e f v0 . (g, e, v0) X.t -> (g, (e, f base) cons, v0) X.t =
+            failwith "Must be overridden"
+          method reduce_shift : type g d v0. (g, d) shift -> (g, d, v0) X.t =
+            function
+            | Id ->
+              self#reduce_Id
+            | Suc sh ->
+              let f = self#reduce_shift sh in
+              self#reduce_Suc f
+        end
+      end
+    end
+
+    let shift_var =
+      let module T = struct
+        type ('g, 'd, 'a) t = ('g, 'a base) var -> ('d, 'a base) var
+      end in
+      let module M : 
+          (ReduceShift.S1 with type ('g, 'd, 'a) t := ('g, 'd, 'a) T.t) =
+        ReduceShift.Make1(T) in
+      let visitor = object (self)
+        inherit [_] M.reduce as super
+        method! reduce_Id    = (fun v -> v)
+        method! reduce_Suc f = (fun v -> Pop (f v))
+      end in
+      visitor#reduce_shift
+
     let rec compose_shift : type g d e. (g, d) shift -> (d, e) shift -> (g, e) shift =
       fun sh -> function
 	     | Id -> sh
