@@ -276,6 +276,8 @@ end
 *)
 
 class virtual ['self] base_reduce = object (self : 'self)
+  (* inherit ['res] Visitors.Runtime.monoid
+       gives the following two virtual methods *)
   method virtual zero : 'res
   method virtual plus : 'res -> 'res -> 'res
   method visit_B : 'env 'var0 . unit -> 'env -> 'res =
@@ -345,8 +347,11 @@ module SyntacticFramework
 struct
     (* Types *)
 
+    type 'a constructor = 'a X.constructor
+      [@virtual]
+      [@constrained : ('_true) t ]
     (* Terms *)
-    type (_,_) var =
+    and  (_,_) var =
       (* Both parameters must be not relevant *)
       (* Both parameters are constrained *)
       | Top : (('g , 'a base) cons, 'a base) var
@@ -366,7 +371,7 @@ struct
       | Lam : (('g, 'a base) cons, 't) tm -> ('g, ('a base, 't) arr) tm
       | Box :  (nil, 't) tm -> ('g, 't boxed) tm
       | Var : ('g, 'a base) var -> ('g, 'a base) tm
-      | C : 't X.constructor * ('g, 't, 'a base) sp -> ('g, 'a base) tm
+      | C : 't constructor * ('g, 't, 'a base) sp -> ('g, 'a base) tm
         (* Only occurrences of an existential type, 't *)
     (* Shifts of indices *)
     and  (_,_) shift =
@@ -389,13 +394,13 @@ struct
       (* First parameter must be not relevant *)
       (* Second parameter is agnostic *)
       (* Both parameters are constrained *)
-      | Shift : ('g, 'd) shift-> ('g, 'd) sub
+      | Shift : ('g, 'd) shift -> ('g, 'd) sub
       | Dot : ('g, 'd) sub * ('d, 't) tm -> (('g, 't) cons, 'd) sub
-    (* [@@deriving 
-      visitors { variety = "iter"; polymorphic = true; nude = "true"; concrete = true; ancestors = [ "base_iter" ]; virtual = [ "constructor" ]; },
-      visitors { variety = "map"; polymorphic = true; nude = "true"; concrete = true; ancestors = [ "base_map" ]; virtual = [ "constructor" ]; },
-      visitors { variety = "reduce"; polymorphic = true; ancestors = [ "base_reduce" ]; virtual = [ "constructor" ]; }
-    ] *)
+    [@@deriving 
+      visitors { variety = "iter"; polymorphic = true; nude = "true"; ancestors = [ "base_iter" ]; },
+      visitors { variety = "map"; polymorphic = true; nude = "true"; ancestors = [ "base_map" ]; },
+      visitors { variety = "reduce"; polymorphic = true; ancestors = [ "base_reduce" ]; }
+    ]
 
     (* Visitor classes *)
 
