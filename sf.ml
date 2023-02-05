@@ -1027,23 +1027,8 @@ struct
 
     (* Dependent reducers for the shift type *)
     module ReduceShift = struct
-      module type S = sig
-        type ('g, 'd) t
-        class virtual ['a] reduce :
-          object ('a)
-            constraint 'a =
-              < reduce_Id : 'g . ('g, 'g) t;
-                reduce_Suc : 'g 'e 'f . ('g, 'e) t -> ('g, ('e, 'f base) cons) t;
-                reduce_shift : 'g 'd . ('g, 'd) shift -> ('g, 'd) t; .. >
-            method reduce_Id : 'g . ('g, 'g) t
-            method reduce_Suc : 'g 'e 'f . ('g, 'e) t -> ('g, ('e, 'f base) cons) t
-            method reduce_shift : 'g 'd . ('g, 'd) shift -> ('g, 'd) t
-          end
-      end
-      module Make 
-          (X : sig type ('g, 'd) t end)
-            : S with type ('g, 'd) t := ('g, 'd) X.t
-       = struct
+      module Make (X : sig type ('g, 'd) t end) =
+      struct
         class virtual ['self] reduce = object (self : 'self)
           method reduce_Id : type g . (g, g) X.t =
             failwith "Must be overridden"
@@ -1059,23 +1044,8 @@ struct
               self#reduce_Suc f
         end
       end
-      module type S1 = sig
-        type ('g, 'd, 'v0) t
-        class ['a] reduce :
-          object ('a)
-            constraint 'a =
-              < reduce_Id : 'g 'v0 . ('g, 'g, 'v0) t;
-                reduce_Suc : 'g 'e 'v0 'f . ('g, 'e, 'v0) t -> ('g, ('e, 'f base) cons, 'v0) t;
-                reduce_shift : 'g 'd 'v0 . ('g, 'd) shift -> ('g, 'd, 'v0) t; .. >
-            method reduce_Id : 'g 'v0 . ('g, 'g, 'v0) t
-            method reduce_Suc : 'g 'e 'f 'v0 . ('g, 'e, 'v0) t -> ('g, ('e, 'f base) cons, 'v0) t
-            method reduce_shift : 'g 'd 'v0 . ('g, 'd) shift -> ('g, 'd, 'v0) t
-          end
-      end
-      module Make1 
-          (X : sig type ('g, 'd, 'v0) t end)
-            : S1 with type ('g, 'd, 'v0) t := ('g, 'd, 'v0) X.t
-       = struct
+      module Make1 (X : sig type ('g, 'd, 'v0) t end) =
+      struct
         class ['self] reduce = object (self : 'self)
           method reduce_Id : type g v0 . (g, g, v0) X.t =
             failwith "Must be overridden"
@@ -1094,12 +1064,11 @@ struct
     end
 
     let shift_var sh v =
-      let module T = struct
-        type ('g, 'd, 'a) t = ('g, 'a base) var -> ('d, 'a base) var
-      end in
-      let module M : 
-          (ReduceShift.S1 with type ('g, 'd, 'a) t := ('g, 'd, 'a) T.t) =
-        ReduceShift.Make1(T) in
+      let module M =
+        ReduceShift.Make1
+          (struct
+            type ('g, 'd, 'a) t = ('g, 'a base) var -> ('d, 'a base) var
+          end) in
       let visitor = object (self)
         inherit [_] M.reduce as super
         method! reduce_Id    = (fun v -> v)
