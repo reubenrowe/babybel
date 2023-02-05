@@ -1093,7 +1093,7 @@ struct
       end
     end
 
-    let shift_var =
+    let shift_var sh v =
       let module T = struct
         type ('g, 'd, 'a) t = ('g, 'a base) var -> ('d, 'a base) var
       end in
@@ -1105,7 +1105,7 @@ struct
         method! reduce_Id    = (fun v -> v)
         method! reduce_Suc f = (fun v -> Pop (f v))
       end in
-      visitor#reduce_shift
+      visitor#reduce_shift sh v
 
     let rec compose_shift : type g d e. (g, d) shift -> (d, e) shift -> (g, e) shift =
       fun sh -> function
