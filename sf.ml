@@ -40,7 +40,7 @@ and  _ ctx =
     has signature
 
         method visit_C :
-          'env 'var0 ... 'var{k} .
+          'var0 ... 'var{k} .
             u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n -> unit
 
     where:
@@ -54,51 +54,54 @@ and  _ ctx =
     iterator visitor method for a type ('v0, ..., 'v{m}) t has signature
 
         method visit_t :
-          type env v0 ... v{m} .
-            u_0 -> ... -> u_m -> env -> (v0, ..., v{m}) t -> unit
+          type v0 ... v{m} .
+            u_0 -> ... -> u_m -> 'env -> (v0, ..., v{m}) t -> unit
 
     where:
     
-      - u_i = (env -> v{i} -> unit) if the i_th parameter of t is relevant,
+      - u_i = ('env -> v{i} -> unit) if the i_th parameter of t is relevant,
         and u_i = unit otherwise (if it is not relevant)
+    
+    Note that the type 'env of the environment is parameterised at the level
+    of the class
 *)
 
 class ['self] base_iter = object (self : 'self)
-  method visit_B : 'env 'var0 . unit  -> 'env -> unit =
+  method visit_B : 'var0 . unit  -> 'env -> unit =
     fun _visit_arg0 env -> ()
-  method visit_base : type env v0 . unit -> env -> v0 base -> unit =
+  method visit_base : type v0 . unit -> 'env -> v0 base -> unit =
     fun _visit_arg0 env _visitors_this ->
       match _visitors_this with
       | B -> self#visit_B _visit_arg0 env
-  method visit_Bo : 'env 'var0 . unit -> 'env -> unit =
+  method visit_Bo : 'var0 . unit -> 'env -> unit =
     fun _visit_arg0 env -> ()
-  method visit_boxed : type env v0 . unit -> env -> v0 boxed -> unit =
+  method visit_boxed : type v0 . unit -> 'env -> v0 boxed -> unit =
     fun _visit_arg0 env _visitors_this ->
       match _visitors_this with
       | Bo -> self#visit_Bo _visit_arg0 env
-  method visit_A : 'env 'var0 'var1 . unit -> unit -> 'env -> unit =
+  method visit_A : 'var0 'var1 . unit -> unit -> 'env -> unit =
     fun _visit_arg0 _visit_arg1 env -> ()
   method visit_arr :
-      type env v0 v1 . unit -> unit -> env -> (v0, v1) arr -> unit =
+      type v0 v1 . unit -> unit -> 'env -> (v0, v1) arr -> unit =
     fun _visit_arg0 _visit_arg1 env _visitors_this ->
       match _visitors_this with
       | A -> self#visit_A _visit_arg0 _visit_arg1 env
-  method visit_cons_Cons : 'env 'var0 'var1 . unit -> unit -> 'env -> unit =
+  method visit_cons_Cons : 'var0 'var1 . unit -> unit -> 'env -> unit =
     fun _visit_arg0 _visit_arg1 env -> ()
   method visit_cons :
-      type env v0 v1 . unit -> unit -> env -> (v0, v1) cons -> unit =
+      type v0 v1 . unit -> unit -> 'env -> (v0, v1) cons -> unit =
     fun _visit_arg0 _visit_arg1 env _visitors_this ->
       match _visitors_this with
       | Cons -> self#visit_cons_Cons _visit_arg0 _visit_arg1 env
-  method visit_Nil : 'env . 'env -> unit =
+  method visit_Nil : 'env -> unit =
     fun env -> ()
-  method visit_nil : type env . env -> nil -> unit =
+  method visit_nil : 'env -> nil -> unit =
     fun env _visitors_this ->
       match _visitors_this with
       | Nil -> self#visit_Nil env
-  method visit_ctx_Empty : 'env . unit -> 'env -> unit =
+  method visit_ctx_Empty : unit -> 'env -> unit =
     fun _visit_arg0 env -> ()
-  method visit_Dec : 'env 'v0 'v1 . unit -> 'env -> 'v0 ctx -> 'v1 -> unit =
+  method visit_Dec : 'v0 'v1 . unit -> 'env -> 'v0 ctx -> 'v1 -> unit =
     fun _visit_arg0 env _visitors_c0 _visitors_c1 ->
       let _visitors_r0 = 
         let _visit_arg0 = () in
@@ -108,7 +111,7 @@ class ['self] base_iter = object (self : 'self)
         (fun _visitors_this -> ()) _visitors_c1 in
       ()
   method visit_ctx :
-      type env v0 . unit -> env -> v0 ctx -> unit =
+      type v0 . unit -> 'env -> v0 ctx -> unit =
     fun _visit_arg0 env _visitors_this ->
       match _visitors_this with
       | Empty ->
@@ -124,7 +127,7 @@ end
     has signature
 
         method visit_C :
-          'env 'var0_in ... 'var{k}_in 'var0_out ... 'var{k}_out .
+          'var0_in ... 'var{k}_in 'var0_out ... 'var{k}_out .
             u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n 
               -> (r_0, ..., r_m) t
 
@@ -152,72 +155,75 @@ end
     iterator visitor method for a type ('v0, ..., 'v{m}) t has signature
 
         method visit_t :
-          type env v0_in ... v{m}_in v0_out ... v{m}_out .
-            u_0 -> ... -> u_m -> env -> 
+          type v0_in ... v{m}_in v0_out ... v{m}_out .
+            u_0 -> ... -> u_m -> 'env -> 
               (v0_in, ..., v{m}_in) t -> (r_0, ..., r_m) t
 
     where:
     
-      - u_i = (env -> v{i}_in -> v{i}_out) if the i_th parameter of t is
+      - u_i = ('env -> v{i}_in -> v{i}_out) if the i_th parameter of t is
           relevant and unconstrained,
-        u_i = (env -> v{i}_in -> v{i}_in) if the i_th parameter of t is relevant
+        u_i = ('env -> v{i}_in -> v{i}_in) if the i_th parameter of t is relevant
           but constrained,
         and u_i = unit otherwise
           (if the i_th parameter is not relevant)
 
       - r_i = v{i}_out if the i_th parameter of t is unconstrained,
         and r_i = v{i}_in otherwise (if the i_th parameter is constrained)
+    
+    Note that the type 'env of the environment is parameterised at the level
+    of the class
 *)
 
 class ['self] base_map = object (self : 'self)
   method visit_B :
-      'env 'var0_in 'var0_out . unit -> 'env -> 'var0_out base =
+      'var0_in 'var0_out . unit -> 'env -> 'var0_out base =
     fun _visit_arg0 env -> B
   method visit_base :
-    type env v0_in v0_out . unit -> env -> v0_in base -> v0_out base =
+    type v0_in v0_out . unit -> 'env -> v0_in base -> v0_out base =
       fun _visit_arg0 env _visitors_this ->
         match _visitors_this with
         | B -> self#visit_B _visit_arg0 env
   method visit_Bo :
-      'env 'var0_in 'var0_out .
+      'var0_in 'var0_out .
         unit -> 'env -> 'var0_out boxed =
     fun _visit_arg0 env -> Bo
   method visit_boxed :
-      type env v0_in v0_out .
-        unit -> env -> v0_in boxed -> v0_out boxed =
+      type v0_in v0_out .
+        unit -> 'env -> v0_in boxed -> v0_out boxed =
     fun _visit_arg0 env _visitors_this ->
       match _visitors_this with
         | Bo -> self#visit_Bo _visit_arg0 env
   method visit_A :
-      'env 'var0_in 'var1_in 'var0_out 'var1_out .
+      'var0_in 'var1_in 'var0_out 'var1_out .
         unit -> unit -> 'env -> ('var0_out, 'var1_out) arr =
     fun _visit_arg0 _visit_arg1 env -> A
   method visit_arr :
-      type env v0_in v1_in v0_out v1_out .
-        unit -> unit -> env -> (v0_in, v1_in) arr -> (v0_out, v1_out) arr =
+      type v0_in v1_in v0_out v1_out .
+        unit -> unit -> 'env -> (v0_in, v1_in) arr -> (v0_out, v1_out) arr =
     fun _visit_arg0 _visit_arg1 env _visitors_this ->
       match _visitors_this with
       | A -> self#visit_A _visit_arg0 _visit_arg1 env
   method visit_cons_Cons :
-      'env 'var0_in 'var1_in 'var0_out 'var1_out .
+      'var0_in 'var1_in 'var0_out 'var1_out .
         unit -> unit ->  'env -> ('var0_out, 'var1_out) cons =
     fun _visit_arg0 _visit_arg1 env -> Cons
   method visit_cons :
-      type env v0_in v1_in v0_out v1_out .
-        unit -> unit -> env -> (v0_in, v1_in) cons -> (v0_out, v1_out) cons =
+      type v0_in v1_in v0_out v1_out .
+        unit -> unit -> 'env -> (v0_in, v1_in) cons -> (v0_out, v1_out) cons =
     fun _visit_arg0 _visit_arg1 env _visitors_this ->
       match _visitors_this with
       | Cons -> self#visit_cons_Cons _visit_arg0 _visit_arg1 env
-  method visit_Nil : 'env . 'env -> nil =
+  method visit_Nil : 'env -> nil =
     fun env -> Nil
-  method visit_nil : 'env . 'env -> nil -> nil =
+  method visit_nil : 'env -> nil -> nil =
     fun env _visitors_this ->
       match _visitors_this with
       | Nil -> self#visit_Nil env
-  method visit_ctx_Empty : 'env . unit -> 'env -> nil ctx =
+  method visit_ctx_Empty : unit -> 'env -> nil ctx =
     fun _visit_arg0 env -> Empty
   method visit_Dec : 
-      'env 'var0_in 'var1_in 'var0_out 'var1_out .
+      'var0_in 'var1_in 'var0_out 'var1_out .
         unit -> 'env -> 'var0_in ctx -> 'var1_in ->
           (('var0_in, 'var1_in) cons) ctx =
     fun _visit_arg0 env _visitors_c0 _visitors_c1 ->
@@ -229,7 +235,7 @@ class ['self] base_map = object (self : 'self)
         (fun _visitors_this -> _visitors_this) _visitors_c1 in
       Dec (_visitors_r0, _visitors_r1)
   method visit_ctx :
-      type env v0_in v0_out . unit -> env -> v0_in ctx -> v0_in ctx =
+      type v0_in v0_out . unit -> 'env -> v0_in ctx -> v0_in ctx =
     fun _visit_arg0 env _visitors_this ->
       match _visitors_this with
       | Empty ->
@@ -245,7 +251,7 @@ end
     has signature
 
         method visit_C :
-          'env 'var0 ... 'var{k} .
+          'var0 ... 'var{k} .
             u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n -> 'res
 
     where:
@@ -262,17 +268,20 @@ end
     iterator visitor method for a type ('v0, ..., 'v{m}) t has signature
 
         method visit_t :
-          type env v0 ... v{m} .
-            u_0 -> ... -> u_m -> env -> (v0, ..., v{m}) t -> 'res
+          type v0 ... v{m} .
+            u_0 -> ... -> u_m -> 'env -> (v0, ..., v{m}) t -> 'res
 
     where:
     
-      - u_i = (env -> v{i} -> 'res) if the i_th parameter of t is relevant,
+      - u_i = ('env -> v{i} -> 'res) if the i_th parameter of t is relevant,
         and u_i = unit otherwise (if it is not relevant)
 
       - 'res is the type variable used in the virtual zero and plus methods
         that denotes the type of the result of the reduction
 
+    
+    Note that the type 'env of the environment is parameterised at the level
+    of the class
 *)
 
 class virtual ['self] base_reduce = object (self : 'self)
@@ -280,45 +289,45 @@ class virtual ['self] base_reduce = object (self : 'self)
        gives the following two virtual methods *)
   method virtual zero : 'res
   method virtual plus : 'res -> 'res -> 'res
-  method visit_B : 'env 'var0 . unit -> 'env -> 'res =
+  method visit_B : 'var0 . unit -> 'env -> 'res =
     fun _visit_arg0 env -> self#zero
   method visit_base :
-    type env v0 . unit -> env -> v0 base -> 'res =
+    type v0 . unit -> 'env -> v0 base -> 'res =
       fun _visit_arg0 env _visitors_this ->
         match _visitors_this with
         | B -> self#visit_B _visit_arg0 env
-  method visit_Bo : 'env 'var0 . unit -> 'env -> 'res =
+  method visit_Bo : 'var0 . unit -> 'env -> 'res =
     fun _visit_arg0 env -> self#zero
   method visit_boxed :
-    type env v0 . unit -> env -> v0 boxed -> 'res =
+    type v0 . unit -> 'env -> v0 boxed -> 'res =
       fun _visit_arg0 env _visitors_this ->
         match _visitors_this with
         | Bo -> self#visit_Bo _visit_arg0 env
   method visit_A :
-      'env 'var0 'var1 . unit -> unit -> 'env -> 'res =
+      'var0 'var1 . unit -> unit -> 'env -> 'res =
     fun _visit_arg0 _visit_arg1 env -> self#zero
   method visit_arr :
-      type env v0 v1 . unit -> unit -> env -> (v0, v1) arr -> 'res =
+      type v0 v1 . unit -> unit -> 'env -> (v0, v1) arr -> 'res =
     fun _visit_arg0 _visit_arg1 env _visitors_this ->
       match _visitors_this with
       | A -> self#visit_A _visit_arg0 _visit_arg1 env
-  method visit_cons_Cons : 'env 'var0 'var1 . unit -> unit -> 'env -> 'res =
+  method visit_cons_Cons : 'var0 'var1 . unit -> unit -> 'env -> 'res =
     fun _visit_arg0 _visit_arg1 env -> self#zero
   method visit_cons :
-      type env v0 v1 . unit -> unit -> env -> (v0, v1) cons -> 'res =
+      type v0 v1 . unit -> unit -> 'env -> (v0, v1) cons -> 'res =
     fun _visit_arg0 _visit_arg1 env _visitors_this ->
       match _visitors_this with
       | Cons -> self#visit_cons_Cons _visit_arg0 _visit_arg1 env
-  method visit_Nil : 'env . 'env -> 'res =
+  method visit_Nil : 'env -> 'res =
     fun env -> self#zero
-  method visit_nil : type env . env -> nil -> 'res =
+  method visit_nil : 'env -> nil -> 'res =
     fun env _visitors_this ->
       match _visitors_this with
       | Nil -> self#visit_Nil env
-  method visit_ctx_Empty : 'env 'var0 . unit -> 'env -> 'res =
+  method visit_ctx_Empty : 'var0 . unit -> 'env -> 'res =
     fun _visit_arg0 env -> self#zero
   method visit_Dec : 
-      'env 'var0 'var1 . unit -> 'env -> 'var0 ctx -> 'var1 -> 'res =
+      'var0 'var1 . unit -> 'env -> 'var0 ctx -> 'var1 -> 'res =
     fun _visit_arg0 env _visitors_c0 _visitors_c1 ->
       let _visitors_r0 =
         let _visit_arg0 = () in
@@ -328,7 +337,7 @@ class virtual ['self] base_reduce = object (self : 'self)
         (fun _visitors_this -> self#zero) _visitors_c1 in
       self#plus _visitors_r0 _visitors_r1
   method visit_ctx :
-      type env v0 . unit -> env -> v0 ctx -> 's =
+      type v0 . unit -> 'env -> v0 ctx -> 's =
     fun _visit_arg0 env _visitors_this ->
       match _visitors_this with
       | Empty ->
@@ -416,11 +425,11 @@ struct
     class virtual ['self] iter = object (self : 'self)
       inherit [_] base_iter
       method virtual visit_constructor :
-       'env 'v0 . unit -> 'env -> 'v0 X.constructor -> unit
-      method visit_Top : 'env 'var0 'var1 . unit -> unit -> 'env -> unit =
+       'v0 . unit -> 'env -> 'v0 X.constructor -> unit
+      method visit_Top : 'var0 'var1 . unit -> unit -> 'env -> unit =
         fun _visit_arg0 _visit_arg1 env -> ()
       method visit_Pop :
-          'env 'var0 'var1 'var2 . unit -> unit -> 'env ->
+          'var0 'var1 'var2 . unit -> unit -> 'env ->
             ('var0, 'var1 base) var -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let () = 
@@ -429,7 +438,7 @@ struct
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
           ()
       method visit_var :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) var -> unit =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) var -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Top ->
@@ -437,10 +446,10 @@ struct
           | Pop v ->
             self#visit_Pop _visit_arg0 _visit_arg1 env v
       method visit_sp_Empty : 
-          'env 'var0 'var1 . unit -> unit -> unit -> 'env -> unit =
+          'var0 'var1 . unit -> unit -> unit -> 'env -> unit =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env -> ()
       method visit_sp_Cons :
-          'env 'var0 'var1 'var2 'var3 .
+          'var0 'var1 'var2 'var3 .
             unit-> unit -> unit -> 'env -> ('var0, 'var1) tm ->
               ('var0, 'var2, 'var3) sp -> unit =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c0 _visitors_c1 ->
@@ -455,8 +464,8 @@ struct
             self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
           ()
       method visit_sp :
-          type env v0 v1 v2 .
-            unit -> unit -> unit -> env -> (v0, v1, v2) sp -> unit =
+          type v0 v1 v2 .
+            unit -> unit -> unit -> 'env -> (v0, v1, v2) sp -> unit =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_this ->
           match _visitors_this with
           | Empty ->
@@ -465,7 +474,7 @@ struct
             self#visit_sp_Cons _visit_arg0 _visit_arg1 _visit_arg2 env
               _visitors_c0 _visitors_c1
       method visit_Lam :
-          'env 'var0 'var1 'var2 .
+          'var0 'var1 'var2 .
             unit -> unit -> 'env -> (('var0, 'var1 base) cons, 'var2) tm ->
               unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
@@ -475,7 +484,7 @@ struct
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
           ()
       method visit_Box :
-          'env 'var0 'var1 .
+          'var0 'var1 .
             unit -> unit -> 'env -> (nil, 'var0) tm -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let () = 
@@ -484,7 +493,7 @@ struct
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
           ()
       method visit_Var :
-          'env 'var0 'var1 .
+          'var0 'var1 .
             unit -> unit -> 'env -> ('var0, 'var1 base) var -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let () = 
@@ -493,7 +502,7 @@ struct
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
           ()
       method visit_C :
-          'env 'var0 'var1 'var2 .
+          'var0 'var1 'var2 .
             unit -> unit -> 'env -> 'var0 X.constructor ->
               ('var1, 'var0, 'var2 base) sp -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
@@ -507,7 +516,7 @@ struct
             self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
           ()
       method visit_tm :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) tm -> unit =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) tm -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Lam _visitors_c0 ->
@@ -518,10 +527,10 @@ struct
             self#visit_Var _visit_arg0 _visit_arg1 env _visitors_c0
           | C (_visitors_c0, _visitors_c1) ->
             self#visit_C _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
-      method visit_Id : 'env 'var0 . unit -> unit -> 'env -> unit =
+      method visit_Id : 'var0 . unit -> unit -> 'env -> unit =
         fun _visit_arg0 _visit_arg1 env -> ()
       method visit_Suc :
-          'env 'var0 'var1 'var2 . unit -> unit -> 'env ->
+          'var0 'var1 'var2 . unit -> unit -> 'env ->
             ('var0, 'var1) shift -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let () = 
@@ -530,7 +539,7 @@ struct
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
           ()
       method visit_shift :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) shift -> unit =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) shift -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Id ->
@@ -538,7 +547,7 @@ struct
           | Suc _visitors_c0 ->
             self#visit_Suc _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_ShiftR :
-          'env 'var0 'var1 .
+          'var0 'var1 .
             unit -> unit -> 'env -> ('var0, 'var1) shift -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let () = 
@@ -547,7 +556,7 @@ struct
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
           ()
       method visit_DotR :
-          'env 'var0 'var1 'var2 .
+          'var0 'var1 'var2 .
             unit -> unit -> 'env -> ('var0, 'var1) ren -> ('var1, 'var2) var ->
               unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
@@ -561,7 +570,7 @@ struct
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c1 in
           ()
       method visit_ren :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) ren -> unit =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) ren -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | ShiftR _visitors_c0 ->
@@ -569,7 +578,7 @@ struct
           | DotR (_visitors_c0, _visitors_c1) ->
             self#visit_DotR _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
       method visit_Shift :
-          'env 'var0 'var1 .
+          'var0 'var1 .
             unit -> unit -> 'env -> ('var0, 'var1) shift -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let () = 
@@ -578,7 +587,7 @@ struct
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
           ()
       method visit_Dot :
-          'env 'var0 'var1 'var2 .
+          'var0 'var1 'var2 .
             unit -> unit -> 'env -> ('var0, 'var1) sub -> ('var1, 'var2) tm ->
               unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
@@ -592,7 +601,7 @@ struct
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c1 in
           ()
       method visit_sub :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) sub -> unit =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) sub -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Shift _visitors_c0 ->
@@ -604,15 +613,15 @@ struct
     class virtual ['self] map = object (self : 'self)
       inherit [_] base_map
       method virtual visit_constructor :
-        'env 'v0_in 'v0_out .
+        'v0_in 'v0_out .
           unit -> 'env -> 'v0_in X.constructor -> 'v0_in X.constructor
       method visit_Top :
-          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+          'var0_in 'var1_in 'var0_out 'var1_out .
             unit -> unit -> 'env ->
               (('var0_in , 'var1_in base) cons, 'var1_in base) var =
         fun _visit_arg0 _visit_arg1 env -> Top
       method visit_Pop :
-          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out . 
+          'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out . 
             unit -> unit -> 'env ->
               ('var0_in, 'var1_in base) var ->
                 (('var0_in, 'var2_in base) cons, 'var1_in base) var =
@@ -623,8 +632,8 @@ struct
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
           Pop _visitors_r0
       method visit_var :
-          type env v0_in v1_in v0_out v1_out .
-            unit -> unit -> env -> (v0_in, v1_in) var -> (v0_in, v1_in) var =
+          type v0_in v1_in v0_out v1_out .
+            unit -> unit -> 'env -> (v0_in, v1_in) var -> (v0_in, v1_in) var =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Top ->
@@ -632,11 +641,11 @@ struct
           | Pop v ->
             self#visit_Pop _visit_arg0 _visit_arg1 env v
       method visit_sp_Empty : 
-          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+          'var0_in 'var1_in 'var0_out 'var1_out .
             unit -> unit -> unit -> 'env -> ('var0_in, 'var1_in, 'var1_in) sp =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env -> Empty
       method visit_sp_Cons :
-          'env 'var0_in  'var1_in  'var2_in  'var3_in
+          'var0_in  'var1_in  'var2_in  'var3_in
                'var0_out 'var1_out 'var2_out 'var3_out .
             unit-> unit -> unit -> 'env ->
               ('var0_in, 'var1_in) tm -> ('var0_in, 'var2_in, 'var3_in) sp ->
@@ -653,8 +662,8 @@ struct
             self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
           Cons (_visitors_r0, _visitors_r1)
       method visit_sp :
-          type env v0_in v1_in v2_in v0_out v1_out v2_out .
-            unit -> unit -> unit -> env -> 
+          type v0_in v1_in v2_in v0_out v1_out v2_out .
+            unit -> unit -> unit -> 'env -> 
               (v0_in, v1_in, v2_in) sp -> (v0_in, v1_in, v2_in) sp =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_this ->
           match _visitors_this with
@@ -664,7 +673,7 @@ struct
             self#visit_sp_Cons _visit_arg0 _visit_arg1 _visit_arg2 env
               _visitors_c0 _visitors_c1
       method visit_Lam :
-          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+          'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
             unit -> unit -> 'env ->
               (('var0_in, 'var1_in base) cons, 'var2_in) tm ->
                 ('var0_in, ('var1_in base, 'var2_in) arr) tm =
@@ -675,7 +684,7 @@ struct
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
           Lam _visitors_r0
       method visit_Box :
-          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+          'var0_in 'var1_in 'var0_out 'var1_out .
             unit -> unit -> 'env -> (nil, 'var0_in) tm ->
               ('var1_in, 'var0_in boxed) tm =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
@@ -685,7 +694,7 @@ struct
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
           Box _visitors_r0
       method visit_Var :
-          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+          'var0_in 'var1_in 'var0_out 'var1_out .
             unit -> unit -> 'env -> ('var0_in, 'var1_in base) var ->
               ('var0_in, 'var1_in base) tm =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
@@ -695,7 +704,7 @@ struct
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
           Var _visitors_r0
       method visit_C :
-          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+          'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
             unit -> unit -> 'env -> 
               'var0_in X.constructor -> 
                 ('var1_in, 'var0_in, 'var2_in base) sp ->
@@ -711,8 +720,8 @@ struct
             self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
           C (_visitors_r0, _visitors_r1)
       method visit_tm :
-          type env v0_in v1_in v0_out v1_out .
-            unit -> unit -> env -> (v0_in, v1_in) tm -> (v0_in, v1_in) tm =
+          type v0_in v1_in v0_out v1_out .
+            unit -> unit -> 'env -> (v0_in, v1_in) tm -> (v0_in, v1_in) tm =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Lam _visitors_c0 ->
@@ -724,11 +733,11 @@ struct
           | C (_visitors_c0, _visitors_c1) ->
             self#visit_C _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
       method visit_Id :
-          'env 'var0_in 'var0_out . unit -> unit -> 'env ->
+          'var0_in 'var0_out . unit -> unit -> 'env ->
             ('var0_in, 'var0_in) shift =
         fun _visit_arg0 _visit_arg1 env -> Id
       method visit_Suc :
-          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+          'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
             unit -> unit -> 'env -> ('var0_in, 'var1_in) shift ->
               ('var0_in, ('var1_in , 'var2_in base) cons) shift =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
@@ -738,8 +747,8 @@ struct
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
           Suc _visitors_r0
       method visit_shift :
-          type env v0_in v1_in v0_out v1_out .
-            unit -> unit -> env -> (v0_in, v1_in) shift ->
+          type v0_in v1_in v0_out v1_out .
+            unit -> unit -> 'env -> (v0_in, v1_in) shift ->
               (v0_in, v1_in) shift =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
@@ -748,7 +757,7 @@ struct
           | Suc _visitors_c0 ->
             self#visit_Suc _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_ShiftR :
-          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+          'var0_in 'var1_in 'var0_out 'var1_out .
             unit -> unit -> 'env -> ('var0_in, 'var1_in) shift ->
               ('var0_in, 'var1_in) ren =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
@@ -758,7 +767,7 @@ struct
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
           ShiftR _visitors_r0
       method visit_DotR :
-          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+          'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
             unit -> unit -> 'env -> ('var0_in, 'var1_in) ren ->
               ('var1_in, 'var2_in base) var ->
                 (('var0_in, 'var2_in base) cons, 'var1_in) ren =
@@ -773,8 +782,8 @@ struct
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c1 in
           DotR (_visitors_r0, _visitors_r1)
       method visit_ren :
-          type env v0_in v1_in v0_out v1_out .
-            unit -> unit -> env -> (v0_in, v1_in) ren -> (v0_in, v1_in) ren =
+          type v0_in v1_in v0_out v1_out .
+            unit -> unit -> 'env -> (v0_in, v1_in) ren -> (v0_in, v1_in) ren =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | ShiftR _visitors_c0 ->
@@ -782,7 +791,7 @@ struct
           | DotR (_visitors_c0, _visitors_c1) ->
             self#visit_DotR _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
       method visit_Shift :
-          'env 'var0_in 'var1_in 'var0_out 'var1_out .
+          'var0_in 'var1_in 'var0_out 'var1_out .
             unit -> unit -> 'env -> ('var0_in, 'var1_in) shift ->
               ('var0_in, 'var1_in) sub =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
@@ -792,7 +801,7 @@ struct
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
           Shift _visitors_r0
       method visit_Dot :
-          'env 'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
+          'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
             unit -> unit -> 'env ->
               ('var0_in, 'var1_in) sub -> ('var1_in, 'var2_in) tm ->
                 (('var0_in, 'var2_in) cons, 'var1_in) sub =
@@ -807,8 +816,8 @@ struct
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c1 in
           Dot (_visitors_r0, _visitors_r1)
       method visit_sub :
-          type env v0_in v1_in v0_out v1_out .
-            unit -> unit -> env -> (v0_in, v1_in) sub -> (v0_in, v1_in) sub =
+          type v0_in v1_in v0_out v1_out .
+            unit -> unit -> 'env -> (v0_in, v1_in) sub -> (v0_in, v1_in) sub =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Shift _visitors_c0 ->
@@ -820,19 +829,19 @@ struct
     class virtual ['self] reduce = object (self : 'self)
       inherit [_] base_reduce
       method virtual visit_constructor :
-       'env 'v0 . unit -> 'env -> 'v0 X.constructor -> 'res
-      method visit_Top : 'env 'var0 'var1 . unit -> unit -> 'env -> 'res =
+       'v0 . unit -> 'env -> 'v0 X.constructor -> 'res
+      method visit_Top : 'var0 'var1 . unit -> unit -> 'env -> 'res =
         fun _visit_arg0 _visit_arg1 env ->
           self#zero
       method visit_Pop :
-          'env 'var0 'var1 'var2 . unit -> unit -> 'env ->
+          'var0 'var1 'var2 . unit -> unit -> 'env ->
             ('var0, 'var1 base) var -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let _visit_arg0 = () in
           let _visit_arg1 = () in
           self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_var :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) var -> 'res =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) var -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Top ->
@@ -840,11 +849,11 @@ struct
           | Pop v ->
             self#visit_Pop _visit_arg0 _visit_arg1 env v
       method visit_sp_Empty : 
-          'env 'var0 'var1 . unit -> unit -> unit -> 'env -> 'res =
+          'var0 'var1 . unit -> unit -> unit -> 'env -> 'res =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env ->
           self#zero
       method visit_sp_Cons :
-          'env 'var0 'var1 'var2 'var3 .
+          'var0 'var1 'var2 'var3 .
             unit-> unit -> unit -> 'env -> ('var0, 'var1) tm ->
               ('var0, 'var2, 'var3) sp -> 'res =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c0 _visitors_c1 ->
@@ -859,8 +868,8 @@ struct
             self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
           self#plus _visitors_r0 _visitors_r1
       method visit_sp :
-          type env v0 v1 v2 .
-            unit -> unit -> unit -> env -> (v0, v1, v2) sp -> 'res =
+          type v0 v1 v2 .
+            unit -> unit -> unit -> 'env -> (v0, v1, v2) sp -> 'res =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_this ->
           match _visitors_this with
           | Empty ->
@@ -869,7 +878,7 @@ struct
             self#visit_sp_Cons _visit_arg0 _visit_arg1 _visit_arg2 env
               _visitors_c0 _visitors_c1
       method visit_Lam :
-          'env 'var0 'var1 'var2 .
+          'var0 'var1 'var2 .
             unit -> unit -> 'env ->
               (('var0, 'var1 base) cons, 'var2) tm -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
@@ -877,21 +886,21 @@ struct
           let _visit_arg1 = () in
           self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_Box :
-          'env 'var0 'var1 .
+          'var0 'var1 .
             unit -> unit -> 'env -> (nil, 'var0) tm -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let _visit_arg0 = () in
           let _visit_arg1 = () in
           self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_Var :
-          'env 'var0 'var1 .
+          'var0 'var1 .
             unit -> unit -> 'env -> ('var0, 'var1 base) var -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let _visit_arg0 = () in
           let _visit_arg1 = () in
           self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_C :
-          'env 'var0 'var1 'var2 .
+          'var0 'var1 'var2 .
             unit -> unit -> 'env -> 'var0 X.constructor ->
               ('var1, 'var0, 'var2 base) sp -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
@@ -905,7 +914,7 @@ struct
             self#visit_sp _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_c1 in
           self#plus _visitors_r0 _visitors_r1
       method visit_tm :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) tm -> 'res =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) tm -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Lam _visitors_c0 ->
@@ -916,18 +925,18 @@ struct
             self#visit_Var _visit_arg0 _visit_arg1 env _visitors_c0
           | C (_visitors_c0, _visitors_c1) ->
             self#visit_C _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
-      method visit_Id : 'env 'var0 . unit -> unit -> 'env -> 'res =
+      method visit_Id : 'var0 . unit -> unit -> 'env -> 'res =
         fun _visit_arg0 _visit_arg1 env ->
           self#zero
       method visit_Suc :
-          'env 'var0 'var1 'var2 . unit -> unit -> 'env ->
+          'var0 'var1 'var2 . unit -> unit -> 'env ->
             ('var0, 'var1) shift -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let _visit_arg0 = () in
           let _visit_arg1 = () in
           self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_shift :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) shift -> 'res =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) shift -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Id ->
@@ -935,14 +944,14 @@ struct
           | Suc _visitors_c0 ->
             self#visit_Suc _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_ShiftR :
-          'env 'var0 'var1 .
+          'var0 'var1 .
             unit -> unit -> 'env -> ('var0, 'var1) shift -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let _visit_arg0 = () in
           let _visit_arg1 = () in
           self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_DotR :
-          'env 'var0 'var1 'var2 .
+          'var0 'var1 'var2 .
             unit -> unit -> 'env ->
               ('var0, 'var1) ren -> ('var1, 'var2) var -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
@@ -956,7 +965,7 @@ struct
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c1 in
           self#plus _visitors_r0 _visitors_r1
       method visit_ren :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) ren -> 'res =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) ren -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | ShiftR _visitors_c0 ->
@@ -964,14 +973,14 @@ struct
           | DotR (_visitors_c0, _visitors_c1) ->
             self#visit_DotR _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1
       method visit_Shift :
-          'env 'var0 'var1 .
+          'var0 'var1 .
             unit -> unit -> 'env -> ('var0, 'var1) shift -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
           let _visit_arg0 = () in
           let _visit_arg1 = () in
           self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0
       method visit_Dot :
-          'env 'var0 'var1 'var2 .
+          'var0 'var1 'var2 .
             unit -> unit -> 'env ->
               ('var0, 'var1) sub -> ('var1, 'var2) tm -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
@@ -985,7 +994,7 @@ struct
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c1 in
           self#plus _visitors_r0 _visitors_r1
       method visit_sub :
-          type env v0 v1 . unit -> unit -> env -> (v0, v1) sub -> 'res =
+          type v0 v1 . unit -> unit -> 'env -> (v0, v1) sub -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_this ->
           match _visitors_this with
           | Shift _visitors_c0 ->
