@@ -21,22 +21,22 @@ and  nil = Nil
 and  _ ctx =
   | Empty : nil ctx
     [@name "ctx_Empty"]
-  | Dec :    'a ctx 
+  | Dec :    'a ctx
           *  ('t [@opaque] (* this _must_ be opaque*))
           -> (('a, 't) cons) ctx
   (* Parameter is not relevant *)
   (* Parameter is constrained *)
 
-[@@deriving 
+[@@deriving
   visitors { variety = "iter"; name = "base_iter"; polymorphic = true; nude = true; concrete = true; },
   visitors { variety = "map"; name = "base_map"; polymorphic = true; nude = true; concrete = true; },
   visitors { variety = "reduce"; name = "base_reduce"; polymorphic = true; }
 ]
 
 (*  iterator visitor method for a (G)ADT constructor of type ('v0, ..., 'v{m}) t
-    
+
         C : s_0 * ... * s_n -> (u_0, ..., u_m) t
-    
+
     has signature
 
         method visit_C :
@@ -44,7 +44,7 @@ and  _ ctx =
             u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n -> unit
 
     where:
-    
+
       - 'var0, ..., 'var{k} correspond to the type variables occurring in the
         constructor
 
@@ -58,10 +58,10 @@ and  _ ctx =
             u_0 -> ... -> u_m -> 'env -> (v0, ..., v{m}) t -> unit
 
     where:
-    
+
       - u_i = ('env -> v{i} -> unit) if the i_th parameter of t is relevant,
         and u_i = unit otherwise (if it is not relevant)
-    
+
     Note that the type 'env of the environment is parameterised at the level
     of the class
 *)
@@ -103,7 +103,7 @@ class ['self] base_iter = object (self : 'self)
     fun _visit_arg0 env -> ()
   method visit_Dec : 'v0 'v1 . unit -> 'env -> 'v0 ctx -> 'v1 -> unit =
     fun _visit_arg0 env _visitors_c0 _visitors_c1 ->
-      let _visitors_r0 = 
+      let _visitors_r0 =
         let _visit_arg0 = () in
         self#visit_ctx _visit_arg0 env _visitors_c0 in
       let _visitors_r1 =
@@ -121,18 +121,18 @@ class ['self] base_iter = object (self : 'self)
 end
 
 (*  map visitor method for a (G)ADT constructor of type ('v0, ..., 'v{m}) t
-    
+
         C : s_0 * ... * s_n -> (u_0, ..., u_m) t
-    
+
     has signature
 
         method visit_C :
           'var0_in ... 'var{k}_in 'var0_out ... 'var{k}_out .
-            u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n 
+            u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n
               -> (r_0, ..., r_m) t
 
     where:
-    
+
       - 'var0_in, ..., 'var{k}_in correspond to the type variables occurring in
         the constructor
 
@@ -150,17 +150,17 @@ end
       - r_i = \theta(u_i) if the i_th parameter of t is unconstrained
           (where \theta is the substitution as defined previously),
         and r_i = u_i otherwise (if the i_th parameter is not relevant or else constrained)
-          
+
 
     iterator visitor method for a type ('v0, ..., 'v{m}) t has signature
 
         method visit_t :
           type v0_in ... v{m}_in v0_out ... v{m}_out .
-            u_0 -> ... -> u_m -> 'env -> 
+            u_0 -> ... -> u_m -> 'env ->
               (v0_in, ..., v{m}_in) t -> (r_0, ..., r_m) t
 
     where:
-    
+
       - u_i = ('env -> v{i}_in -> v{i}_out) if the i_th parameter of t is
           relevant and unconstrained,
         u_i = ('env -> v{i}_in -> v{i}_in) if the i_th parameter of t is relevant
@@ -170,7 +170,7 @@ end
 
       - r_i = v{i}_out if the i_th parameter of t is unconstrained,
         and r_i = v{i}_in otherwise (if the i_th parameter is constrained)
-    
+
     Note that the type 'env of the environment is parameterised at the level
     of the class
 *)
@@ -222,7 +222,7 @@ class ['self] base_map = object (self : 'self)
       | Nil -> self#visit_Nil env
   method visit_ctx_Empty : unit -> 'env -> nil ctx =
     fun _visit_arg0 env -> Empty
-  method visit_Dec : 
+  method visit_Dec :
       'var0_in 'var1_in 'var0_out 'var1_out .
         unit -> 'env -> 'var0_in ctx -> 'var1_in ->
           (('var0_in, 'var1_in) cons) ctx =
@@ -245,9 +245,9 @@ class ['self] base_map = object (self : 'self)
 end
 
 (*  reduce visitor method for a (G)ADT constructor of type ('v0, ..., 'v{m}) t
-    
+
         C : s_0 * ... * s_n -> (u_0, ..., u_m) t
-    
+
     has signature
 
         method visit_C :
@@ -255,13 +255,13 @@ end
             u'_0 -> ... -> u'_m -> 'env -> s_0 -> ... -> s_n -> 'res
 
     where:
-    
+
       - 'var0, ..., 'var{k} correspond to the type variables occurring in the
         constructor
 
       - u'_i = ('env -> u_i -> 'res) if the i_th parameter of t is relevant,
         and u'_i = unit otherwise (if it is not relevant)
-      
+
       - 'res is the type variable used in the virtual zero and plus methods
         that denotes the type of the result of the reduction
 
@@ -272,14 +272,14 @@ end
             u_0 -> ... -> u_m -> 'env -> (v0, ..., v{m}) t -> 'res
 
     where:
-    
+
       - u_i = ('env -> v{i} -> 'res) if the i_th parameter of t is relevant,
         and u_i = unit otherwise (if it is not relevant)
 
       - 'res is the type variable used in the virtual zero and plus methods
         that denotes the type of the result of the reduction
 
-    
+
     Note that the type 'env of the environment is parameterised at the level
     of the class
 *)
@@ -326,7 +326,7 @@ class virtual ['self] base_reduce = object (self : 'self)
       | Nil -> self#visit_Nil env
   method visit_ctx_Empty : 'var0 . unit -> 'env -> 'res =
     fun _visit_arg0 env -> self#zero
-  method visit_Dec : 
+  method visit_Dec :
       'var0 'var1 . unit -> 'env -> 'var0 ctx -> 'var1 -> 'res =
     fun _visit_arg0 env _visitors_c0 _visitors_c1 ->
       let _visitors_r0 =
@@ -349,7 +349,7 @@ end
 (* The module for the syntactic framework *)
 
 module SyntacticFramework
-  (X : sig 
+  (X : sig
          type _ constructor
          val to_string : 'a constructor -> string
        end) =
@@ -405,7 +405,7 @@ struct
       (* Both parameters are constrained *)
       | Shift : ('g, 'd) shift -> ('g, 'd) sub
       | Dot : ('g, 'd) sub * ('d, 't) tm -> (('g, 't) cons, 'd) sub
-    [@@deriving 
+    [@@deriving
       visitors { variety = "iter"; polymorphic = true; nude = "true"; ancestors = [ "base_iter" ]; },
       visitors { variety = "map"; polymorphic = true; nude = "true"; ancestors = [ "base_map" ]; },
       visitors { variety = "reduce"; polymorphic = true; ancestors = [ "base_reduce" ]; }
@@ -417,7 +417,7 @@ struct
        visitor methods for the basic types at the top, since they are never
        referred to in the arguments of the constructors. They are only used as
        arguments for the parameters of the return types.
-      
+
        Nevertheless, these visitors will extend the previous ones, so that all
        the visitor methods can be composed together in one class.
     *)
@@ -432,7 +432,7 @@ struct
           'var0 'var1 'var2 . unit -> unit -> 'env ->
             ('var0, 'var1 base) var -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -445,7 +445,7 @@ struct
             self#visit_Top _visit_arg0 _visit_arg1 env
           | Pop v ->
             self#visit_Pop _visit_arg0 _visit_arg1 env v
-      method visit_sp_Empty : 
+      method visit_sp_Empty :
           'var0 'var1 . unit -> unit -> unit -> 'env -> unit =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env -> ()
       method visit_sp_Cons :
@@ -478,7 +478,7 @@ struct
             unit -> unit -> 'env -> (('var0, 'var1 base) cons, 'var2) tm ->
               unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -487,7 +487,7 @@ struct
           'var0 'var1 .
             unit -> unit -> 'env -> (nil, 'var0) tm -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -496,7 +496,7 @@ struct
           'var0 'var1 .
             unit -> unit -> 'env -> ('var0, 'var1 base) var -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -506,7 +506,7 @@ struct
             unit -> unit -> 'env -> 'var0 X.constructor ->
               ('var1, 'var0, 'var2 base) sp -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             self#visit_constructor _visit_arg0 env _visitors_c0 in
           let () =
@@ -533,7 +533,7 @@ struct
           'var0 'var1 'var2 . unit -> unit -> 'env ->
             ('var0, 'var1) shift -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -550,7 +550,7 @@ struct
           'var0 'var1 .
             unit -> unit -> 'env -> ('var0, 'var1) shift -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -560,11 +560,11 @@ struct
             unit -> unit -> 'env -> ('var0, 'var1) ren -> ('var1, 'var2) var ->
               unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_ren _visit_arg0 _visit_arg1 env _visitors_c0 in
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c1 in
@@ -581,7 +581,7 @@ struct
           'var0 'var1 .
             unit -> unit -> 'env -> ('var0, 'var1) shift -> unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -591,11 +591,11 @@ struct
             unit -> unit -> 'env -> ('var0, 'var1) sub -> ('var1, 'var2) tm ->
               unit =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_sub _visit_arg0 _visit_arg1 env _visitors_c0 in
-          let () = 
+          let () =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c1 in
@@ -621,12 +621,12 @@ struct
               (('var0_in , 'var1_in base) cons, 'var1_in base) var =
         fun _visit_arg0 _visit_arg1 env -> Top
       method visit_Pop :
-          'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out . 
+          'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
             unit -> unit -> 'env ->
               ('var0_in, 'var1_in base) var ->
                 (('var0_in, 'var2_in base) cons, 'var1_in base) var =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -640,7 +640,7 @@ struct
             self#visit_Top _visit_arg0 _visit_arg1 env
           | Pop v ->
             self#visit_Pop _visit_arg0 _visit_arg1 env v
-      method visit_sp_Empty : 
+      method visit_sp_Empty :
           'var0_in 'var1_in 'var0_out 'var1_out .
             unit -> unit -> unit -> 'env -> ('var0_in, 'var1_in, 'var1_in) sp =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env -> Empty
@@ -663,7 +663,7 @@ struct
           Cons (_visitors_r0, _visitors_r1)
       method visit_sp :
           type v0_in v1_in v2_in v0_out v1_out v2_out .
-            unit -> unit -> unit -> 'env -> 
+            unit -> unit -> unit -> 'env ->
               (v0_in, v1_in, v2_in) sp -> (v0_in, v1_in, v2_in) sp =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env _visitors_this ->
           match _visitors_this with
@@ -678,7 +678,7 @@ struct
               (('var0_in, 'var1_in base) cons, 'var2_in) tm ->
                 ('var0_in, ('var1_in base, 'var2_in) arr) tm =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -688,7 +688,7 @@ struct
             unit -> unit -> 'env -> (nil, 'var0_in) tm ->
               ('var1_in, 'var0_in boxed) tm =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -698,19 +698,19 @@ struct
             unit -> unit -> 'env -> ('var0_in, 'var1_in base) var ->
               ('var0_in, 'var1_in base) tm =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c0 in
           Var _visitors_r0
       method visit_C :
           'var0_in 'var1_in 'var2_in 'var0_out 'var1_out 'var2_out .
-            unit -> unit -> 'env -> 
-              'var0_in X.constructor -> 
+            unit -> unit -> 'env ->
+              'var0_in X.constructor ->
                 ('var1_in, 'var0_in, 'var2_in base) sp ->
                   ('var1_in, 'var2_in base) tm =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             self#visit_constructor _visit_arg0 env _visitors_c0 in
           let _visitors_r1 =
@@ -741,7 +741,7 @@ struct
             unit -> unit -> 'env -> ('var0_in, 'var1_in) shift ->
               ('var0_in, ('var1_in , 'var2_in base) cons) shift =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -761,7 +761,7 @@ struct
             unit -> unit -> 'env -> ('var0_in, 'var1_in) shift ->
               ('var0_in, 'var1_in) ren =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -772,11 +772,11 @@ struct
               ('var1_in, 'var2_in base) var ->
                 (('var0_in, 'var2_in base) cons, 'var1_in) ren =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_ren _visit_arg0 _visit_arg1 env _visitors_c0 in
-          let _visitors_r1 = 
+          let _visitors_r1 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c1 in
@@ -795,7 +795,7 @@ struct
             unit -> unit -> 'env -> ('var0_in, 'var1_in) shift ->
               ('var0_in, 'var1_in) sub =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_shift _visit_arg0 _visit_arg1 env _visitors_c0 in
@@ -806,11 +806,11 @@ struct
               ('var0_in, 'var1_in) sub -> ('var1_in, 'var2_in) tm ->
                 (('var0_in, 'var2_in) cons, 'var1_in) sub =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_sub _visit_arg0 _visit_arg1 env _visitors_c0 in
-          let _visitors_r1 = 
+          let _visitors_r1 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c1 in
@@ -848,7 +848,7 @@ struct
             self#visit_Top _visit_arg0 _visit_arg1 env
           | Pop v ->
             self#visit_Pop _visit_arg0 _visit_arg1 env v
-      method visit_sp_Empty : 
+      method visit_sp_Empty :
           'var0 'var1 . unit -> unit -> unit -> 'env -> 'res =
         fun _visit_arg0 _visit_arg1 _visit_arg2 env ->
           self#zero
@@ -904,7 +904,7 @@ struct
             unit -> unit -> 'env -> 'var0 X.constructor ->
               ('var1, 'var0, 'var2 base) sp -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             self#visit_constructor _visit_arg0 env _visitors_c0 in
           let _visitors_r1 =
@@ -955,11 +955,11 @@ struct
             unit -> unit -> 'env ->
               ('var0, 'var1) ren -> ('var1, 'var2) var -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_ren _visit_arg0 _visit_arg1 env _visitors_c0 in
-          let _visitors_r1 = 
+          let _visitors_r1 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_var _visit_arg0 _visit_arg1 env _visitors_c1 in
@@ -984,11 +984,11 @@ struct
             unit -> unit -> 'env ->
               ('var0, 'var1) sub -> ('var1, 'var2) tm -> 'res =
         fun _visit_arg0 _visit_arg1 env _visitors_c0 _visitors_c1 ->
-          let _visitors_r0 = 
+          let _visitors_r0 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_sub _visit_arg0 _visit_arg1 env _visitors_c0 in
-          let _visitors_r1 = 
+          let _visitors_r1 =
             let _visit_arg0 = () in
             let _visit_arg1 = () in
             self#visit_tm _visit_arg0 _visit_arg1 env _visitors_c1 in
@@ -1041,7 +1041,7 @@ struct
         class virtual ['self] reduce = object (self : 'self)
           method reduce_Id : type g . (g, g) X.t =
             failwith "Must be overridden"
-          method reduce_Suc : 
+          method reduce_Suc :
               type g e f . (g, e) X.t -> (g, (e, f base) cons) X.t =
             failwith "Must be overridden"
           method reduce_shift : type g d . (g, d) shift -> (g, d) X.t =
@@ -1058,7 +1058,7 @@ struct
         class ['self] reduce = object (self : 'self)
           method reduce_Id : type g v0 . (g, g, v0) X.t =
             failwith "Must be overridden"
-          method reduce_Suc : 
+          method reduce_Suc :
               type g e f v0 . (g, e, v0) X.t -> (g, (e, f base) cons, v0) X.t =
             failwith "Must be overridden"
           method reduce_shift : type g d v0. (g, d) shift -> (g, d, v0) X.t =
@@ -1183,3 +1183,59 @@ struct
       in
       fun f v -> Format.fprintf f "%d" (var_to_int v)
   end
+
+
+(* Examples *)
+
+(** The lambda caluclus **)
+
+module LC =
+struct
+
+  (* The 'kind' of lambda terms *)
+  type lc = L (* The constructor is not really needed *)
+
+  (* the cosntructors of lambda terms *)
+  type 'a lc_constructor =
+    | LC : (lc base) lc_constructor
+    | LApp : ((lc base, (lc base, lc base) arr) arr) lc_constructor
+    | LLam : (((lc base, lc base) arr, lc base) arr) lc_constructor
+
+  let rec lc_to_string : type a. (a lc_constructor) -> string = fun t ->
+    match t with
+    | LC -> "C"
+    | LApp -> "App"
+    | LLam -> "Lam"
+
+  (* The syntax of lambda terms *)
+  module LCSyn = SyntacticFramework(
+    struct
+      type 'a constructor = 'a lc_constructor
+       let to_string = lc_to_string
+    end)
+
+  (* Smart constructors for the lambda calculus *)
+  let app m n = let open LCSyn in
+    C(LApp, Cons(m, Cons(n, Empty)))
+
+  let lam m = let open LCSyn in
+    C(LLam, Cons(Lam m, Empty))
+
+  let c = let open LCSyn in
+    C(LC, Empty)
+
+  let top = let open LCSyn in
+    Var Top
+
+  (* Can this function be written without dependent types? n -> Fin n  *)
+  (* let rec v (n : int) = let open LCSyn in *)
+  (*   if n < 0 then failwith "De Bruijn indices have to be natural numbers" *)
+  (*   else if n = 0 then Top *)
+  (*   else Pop (v (n - 1)) *)
+
+  (* some sample terms *)
+  let tm_lc : ('g, lc base) LCSyn.tm = c
+  let tm_id : ('g, lc base) LCSyn.tm = lam top
+  let tm_omega : ('g, lc base) LCSyn.tm = lam (app top top)
+  let tm_Omega : ('g, lc base) LCSyn.tm = app tm_omega tm_omega
+end
