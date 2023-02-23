@@ -1214,18 +1214,36 @@ struct
        let to_string = lc_to_string
     end)
 
+  open LCSyn
+
   (* Smart constructors for the lambda calculus *)
-  let app m n = let open LCSyn in
+  let app m n =
     C(LApp, Cons(m, Cons(n, Empty)))
 
-  let lam m = let open LCSyn in
+  let lam m =
     C(LLam, Cons(Lam m, Empty))
 
-  let c = let open LCSyn in
+  let c =
     C(LC, Empty)
 
-  let top = let open LCSyn in
+  let top =
     Var Top
+
+  (* some sample terms *)
+  let tm_lc = c
+  let tm_id = 
+    C(LLam, Cons(Lam top, Empty))
+  (* When we are not constructing terms directly, we have to wrap the result
+     in a thunk, since type variables resulting from an application cannot
+     be generalised. *)
+  let mk_tm_id : 'g . unit -> ('g, lc base) LCSyn.tm = 
+    fun () ->
+      lam top
+    (* C(LLam, Cons(Lam top, Empty)) *)
+  let mk_tm_omega : 'g . unit -> ('g, lc base) LCSyn.tm =
+    fun () -> lam (app top top)
+  let mk_tm_Omega : 'g . unit -> ('g, lc base) LCSyn.tm =
+    fun () -> app (mk_tm_omega ()) (mk_tm_omega ())
 
   (* Can this function be written without dependent types? n -> Fin n  *)
   (* let rec v (n : int) = let open LCSyn in *)
@@ -1233,9 +1251,71 @@ struct
   (*   else if n = 0 then Top *)
   (*   else Pop (v (n - 1)) *)
 
-  (* some sample terms *)
-  let tm_lc : ('g, lc base) LCSyn.tm = c
-  let tm_id : ('g, lc base) LCSyn.tm = lam top
-  let tm_omega : ('g, lc base) LCSyn.tm = lam (app top top)
-  let tm_Omega : ('g, lc base) LCSyn.tm = app tm_omega tm_omega
+  let count idx tm =
+    let rec count : type g a . int -> (g, a) tm -> int =
+      fun idx ->
+        function
+        | Box _ ->
+          (* we know that boxed terms are closed *)
+          0
+        | Var v ->
+          begin match v with
+          | Top ->
+            if (Int.equal idx 0) then 1 else 0
+          | Pop v' ->
+            count (idx - 1) (Var v')
+          end
+        | Lam t ->
+          (* Shift the variable up when moving under a lambda *)
+          count (idx + 1) t
+        | C (_, s) ->
+          count_sp idx s
+    and count_sp : type g a b . int -> (g, a, b) sp -> int =
+      fun idx ->
+        function
+        | Empty ->
+          0
+        | Cons (t, s) ->
+          (count idx t) + (count_sp idx s) in
+    if Int.(0 > idx) then 0 else count idx tm
+
+  (* And now for the visitor-based version! *)
+  let count idx tm =
+    let visitor = object (self)
+      inherit [_] reduce as super
+      method zero = 0
+      method plus m n = Int.(m + n)
+      method visit_constructor () _ _ = self#zero
+      method! visit_Box () () _ _ = self#zero
+      (* We don't need to override visit_Var,
+         only the visit methods for Top and Pop  *)
+      method! visit_Top () () idx =
+        if (Int.equal idx 0) then 1 else 0
+      method! visit_Pop () () idx v =
+          self#visit_var () () (idx - 1) v
+      method! visit_Lam () () idx t =
+        (* Shift the variable up when moving under a lambda *)
+        self#visit_tm () () (idx + 1) t
+      (* Don't need to override visit_C as it uses the default recursion *)
+      method! visit_sp_Empty () () () _ = self#zero
+      (* Don't need to override visit_sp_Cons as it uses the default recursion *)
+    end in
+  visitor#visit_tm () () idx tm
+  
+  ;;
+
+  (* Tests *)
+
+  let tm_omega = mk_tm_omega () in
+  assert (Int.equal (count 0 tm_omega) 0) ;;
+
+  let tm_Omega = mk_tm_Omega () in
+  assert (Int.equal (count 0 tm_Omega) 0) ;;
+
+  let tm_omega = mk_tm_omega () in
+  assert (Int.equal (count 1 tm_omega) 0) ;;
+  
+  let tm_Omega = mk_tm_Omega () in
+  assert (Int.equal (count 1 tm_Omega) 0) ;;
+
 end
