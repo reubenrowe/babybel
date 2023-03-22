@@ -1316,8 +1316,70 @@ struct
 
   let tm_omega = mk_tm_omega () in
   assert (Int.equal (count 1 tm_omega) 0) ;;
-  
+
   let tm_Omega = mk_tm_Omega () in
   assert (Int.equal (count 1 tm_Omega) 0) ;;
+
+  let count v t =
+    let rec count_var
+        : type g a b . (g, a base) var -> (g, b base) var -> int =
+      fun v1 v2 ->
+        match v1, v2 with
+        | Top, Top ->
+          1
+        | Pop v1', Pop v2' ->
+          count_var v1' v2'
+        | _ ->
+          0 in
+    let rec count_tm : type g a b . (g, a base) var -> (g, b) tm -> int =
+      fun v ->
+        function
+        | Box _ ->
+          0
+        | Var v' ->
+          count_var v v'
+        | Lam t ->
+          let v' = shift_var (Suc Id) v in
+          count_tm v' t 
+        | C (_, s) ->
+          count_sp v s
+    and count_sp : type g a b c . (g, a base) var -> (g, c, b) sp -> int =
+      fun v ->
+        function
+        | Empty ->
+          0
+        | Cons (t, s) ->
+          (count_tm v t) + (count_sp v s) in
+    count_tm v t
+
+  ;;
+
+  (* Tests *)
+
+  let tm_omega = mk_tm_omega () in
+  let v = Top in
+  assert (Int.equal (count v tm_omega) 0) ;;
+
+  let tm_Omega = mk_tm_Omega () in
+  let v = Top in
+  assert (Int.equal (count v tm_Omega) 0) ;;
+
+  let tm_omega = mk_tm_omega () in
+  let v = Pop Top in
+  assert (Int.equal (count v tm_omega) 0) ;;
+
+  let tm_Omega = mk_tm_Omega () in
+  let v = Pop Top in
+  assert (Int.equal (count v tm_Omega) 0) ;;
+
+  (* Make a function that returns a var option from an int
+     index and a term, the context of the var is the same as
+     that of the term. *)
+
+  (* Take a var and term and work out how much to weaken the
+     contexts so that they can be matched up, using reified
+     contexts and renamings. *)
+
+  (* Closure conversion *)
 
 end
