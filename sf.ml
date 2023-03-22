@@ -1035,55 +1035,75 @@ struct
         (fun v -> Pop (f v))
 
     (* Dependent reducers for the shift type *)
-    module ReduceShift = struct
+    module ShiftReduce = struct
       module Make (X : sig type ('g, 'd) t end) =
       struct
-        class virtual ['self] reduce = object (self : 'self)
-          method reduce_Id : type g . (g, g) X.t =
+        class virtual ['self] fold = object (self : 'self)
+          method reduce_Id : 'g . 'env -> ('g, 'g) X.t =
             failwith "Must be overridden"
+          method visit_Id : 'g . 'env -> ('g, 'g) X.t =
+            fun env ->
+              self#reduce_Id env
           method reduce_Suc :
-              type g e f . (g, e) X.t -> (g, (e, f base) cons) X.t =
+              'g 'd 'a . 'env -> ('g, 'd) X.t -> ('g, ('d, 'a base) cons) X.t =
             failwith "Must be overridden"
-          method reduce_shift : type g d . (g, d) shift -> (g, d) X.t =
-            function
-            | Id ->
-              self#reduce_Id
-            | Suc sh ->
-              let f = self#reduce_shift sh in
-              self#reduce_Suc f
+          method visit_Suc :
+              'g 'd 'a . 'env -> ('g, 'd) shift -> ('g, ('d, 'a base) cons) X.t =
+            fun env sh ->
+              let f = self#visit_shift env sh in
+              self#reduce_Suc env f
+          method visit_shift
+              : type g d . 'env -> (g, d) shift -> (g, d) X.t =
+            fun env ->
+              function
+              | Id ->
+                self#visit_Id env
+              | Suc sh ->
+                self#visit_Suc env sh
         end
       end
       module Make1 (X : sig type ('g, 'd, 'v0) t end) =
       struct
         class ['self] reduce = object (self : 'self)
-          method reduce_Id : type g v0 . (g, g, v0) X.t =
+          method reduce_Id : 'g 'v0 . 'env -> ('g, 'g, 'v0) X.t =
             failwith "Must be overridden"
+          method visit_Id : 'g 'v0 . 'env -> ('g, 'g, 'v0) X.t =
+            fun env ->
+              self#reduce_Id env
           method reduce_Suc :
-              type g e f v0 . (g, e, v0) X.t -> (g, (e, f base) cons, v0) X.t =
+              'g 'd 'a 'v0 . 
+                'env -> ('g, 'd, 'v0) X.t -> ('g, ('d, 'a base) cons, 'v0) X.t =
             failwith "Must be overridden"
-          method reduce_shift : type g d v0. (g, d) shift -> (g, d, v0) X.t =
-            function
-            | Id ->
-              self#reduce_Id
-            | Suc sh ->
-              let f = self#reduce_shift sh in
-              self#reduce_Suc f
-        end
+          method visit_Suc :
+              'g 'd 'a 'v0 . 
+                'env -> ('g, 'd) shift -> ('g, ('d, 'a base) cons, 'v0) X.t =
+            fun env sh ->
+              let f = self#visit_shift env sh in
+              self#reduce_Suc env f
+          method visit_shift
+              : type g d v0 . 'env -> (g, d) shift -> (g, d, v0) X.t =
+            fun env ->
+              function
+              | Id ->
+                self#visit_Id env
+              | Suc sh ->
+                self#visit_Suc env sh
+          end
       end
     end
 
     let shift_var sh v =
       let module M =
-        ReduceShift.Make1
+        ShiftReduce.Make1
           (struct
             type ('g, 'd, 'a) t = ('g, 'a base) var -> ('d, 'a base) var
           end) in
       let visitor = object (self)
         inherit [_] M.reduce as super
-        method! reduce_Id    = (fun v -> v)
-        method! reduce_Suc f = (fun v -> Pop (f v))
+        method! reduce_Id  _   = (fun v -> v)
+        method! reduce_Suc _ f = (fun v -> Pop (f v))
       end in
-      visitor#reduce_shift sh v
+      visitor#visit_shift () sh v
 
     let rec compose_shift : type g d e. (g, d) shift -> (d, e) shift -> (g, e) shift =
       fun sh -> function
