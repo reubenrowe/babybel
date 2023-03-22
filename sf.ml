@@ -1252,7 +1252,7 @@ struct
   (*   else Pop (v (n - 1)) *)
 
   let count idx tm =
-    let rec count : type g a . int -> (g, a) tm -> int =
+    let rec count_tm : type g a . int -> (g, a) tm -> int =
       fun idx ->
         function
         | Box _ ->
@@ -1263,11 +1263,11 @@ struct
           | Top ->
             if (Int.equal idx 0) then 1 else 0
           | Pop v' ->
-            count (idx - 1) (Var v')
+            count_tm (idx - 1) (Var v')
           end
         | Lam t ->
           (* Shift the variable up when moving under a lambda *)
-          count (idx + 1) t
+          count_tm (idx + 1) t
         | C (_, s) ->
           count_sp idx s
     and count_sp : type g a b . int -> (g, a, b) sp -> int =
@@ -1276,11 +1276,11 @@ struct
         | Empty ->
           0
         | Cons (t, s) ->
-          (count idx t) + (count_sp idx s) in
-    if Int.(0 > idx) then 0 else count idx tm
+          (count_tm idx t) + (count_sp idx s) in
+    if Int.(0 > idx) then 0 else count_tm idx tm
 
   (* And now for the visitor-based version! *)
-  let count idx tm =
+  let count idx t =
     let visitor = object (self)
       inherit [_] reduce as super
       method zero = 0
@@ -1295,12 +1295,14 @@ struct
           self#visit_var () () (idx - 1) v
       method! visit_Lam () () idx t =
         (* Shift the variable up when moving under a lambda *)
+        (* But this relies on the programmer doing the correct thing
+             i.e. recursing on idx+1 (and not something else) *)
         self#visit_tm () () (idx + 1) t
       (* Don't need to override visit_C as it uses the default recursion *)
       method! visit_sp_Empty () () () _ = self#zero
       (* Don't need to override visit_sp_Cons as it uses the default recursion *)
     end in
-  visitor#visit_tm () () idx tm
+  visitor#visit_tm () () idx t
   
   ;;
 
