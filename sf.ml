@@ -1110,6 +1110,26 @@ struct
 	     | Id -> sh
 	     | Suc shh -> Suc (compose_shift sh shh)
 
+    (* Swap the arguments round so the recursion is on the first argument *)
+    let rec compose_shift : type d e . (d, e) shift -> ('g, d) shift -> ('g, e) shift =
+      function
+      | Id -> (fun sh -> sh)
+      | Suc sh -> (fun sh' -> Suc (compose_shift sh sh'))
+
+    (* Now implement it with a visitor *)
+    let compose_shift sh sh' =
+      let module M =
+        ShiftReduce.Make1
+          (struct
+            type ('d, 'e, 'g) t = ('g, 'd) shift -> ('g, 'e) shift
+          end) in
+      let visitor = object (self)
+        inherit [_] M.reduce as super
+        method! reduce_Id  _   = (fun sh -> sh)
+        method! reduce_Suc _ f = (fun sh -> Suc (f sh))
+      end in
+      visitor#visit_shift () sh' sh
+
     (* Renamings *)
 
     let rec lookup_ren : type g d a. ((g, a base) var * (g, d) ren) -> (d, a base) var =
